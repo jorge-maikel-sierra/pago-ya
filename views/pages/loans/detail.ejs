@@ -1,0 +1,424 @@
+<%
+const STATUS_MAP = {
+  ACTIVE:    { bg: 'bg-green-100',  text: 'text-green-700',  label: 'Activo'      },
+  PENDING:   { bg: 'bg-yellow-100', text: 'text-yellow-700', label: 'Pendiente'   },
+  COMPLETED: { bg: 'bg-blue-100',   text: 'text-blue-700',   label: 'Completado'  },
+  DEFAULTED: { bg: 'bg-red-100',    text: 'text-red-700',    label: 'En mora'     },
+  CANCELLED: { bg: 'bg-gray-100',   text: 'text-gray-600',   label: 'Cancelado'   },
+};
+
+const FREQ_MAP = {
+  DAILY:    'Diario',
+  WEEKLY:   'Semanal',
+  BIWEEKLY: 'Quincenal',
+  MONTHLY:  'Mensual',
+};
+
+const AMORT_MAP = {
+  FIXED:             'Cuota fija',
+  DECLINING_BALANCE: 'Saldo decreciente',
+};
+
+const INCIDENT_MAP = {
+  CLIENT_ABSENT:     { icon: '🚪', label: 'Cliente ausente'   },
+  PARTIAL_PAYMENT:   { icon: '💰', label: 'Pago parcial'      },
+  REFUSED_PAYMENT:   { icon: '🚫', label: 'Se negó a pagar'   },
+  ADDRESS_NOT_FOUND: { icon: '📍', label: 'Dirección no encontrada' },
+};
+
+function formatCOP(amount) {
+  if (amount == null) return '—';
+  return new Intl.NumberFormat('es-CO', {
+    style: 'currency',
+    currency: 'COP',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(amount);
+}
+
+function formatDate(date) {
+  if (!date) return '—';
+  return new Date(date).toLocaleDateString('es-CO', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    timeZone: 'UTC',
+  });
+}
+
+function formatDateTime(date) {
+  if (!date) return '—';
+  return new Date(date).toLocaleString('es-CO', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    timeZone: 'America/Bogota',
+  });
+}
+
+const badge = STATUS_MAP[loan.status] || { bg: 'bg-gray-100', text: 'text-gray-500', label: loan.status };
+const progressPct = loan.numberOfPayments > 0
+  ? Math.round((loan.paidPayments / loan.numberOfPayments) * 100)
+  : 0;
+%>
+<%- include('../../layouts/header') %>
+<div class="p-4 sm:p-6 lg:p-8 space-y-6">
+
+  <!-- Encabezado -->
+  <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+    <div class="flex items-center gap-3">
+      <a href="/admin/loans"
+         class="inline-flex items-center gap-1 text-sm text-gray-400 hover:text-brand-navy transition-colors">
+        ← Préstamos
+      </a>
+      <span class="text-gray-300">/</span>
+      <span class="text-sm text-gray-500">
+        <%= loan.client.firstName %> <%= loan.client.lastName %>
+      </span>
+    </div>
+    <span class="inline-flex items-center self-start px-3 py-1 rounded-full text-sm font-semibold
+                 <%= badge.bg %> <%= badge.text %>">
+      <%= badge.label %>
+    </span>
+  </div>
+
+  <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+    <div>
+      <h1 class="text-2xl font-bold text-brand-navy">
+        Préstamo — <%= loan.client.firstName %> <%= loan.client.lastName %>
+      </h1>
+      <p class="text-xs text-gray-400 mt-0.5 font-mono"><%= loan.id %></p>
+    </div>
+  </div>
+
+  <!-- KPIs rápidos -->
+  <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+
+    <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-4">
+      <p class="text-xs font-medium text-gray-500 uppercase tracking-wide">Capital</p>
+      <p class="text-xl font-bold text-brand-navy mt-1"><%= formatCOP(loan.principalAmount) %></p>
+    </div>
+
+    <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-4">
+      <p class="text-xs font-medium text-gray-500 uppercase tracking-wide">Saldo pendiente</p>
+      <p class="text-xl font-bold <%= loan.status === 'DEFAULTED' ? 'text-red-600' : 'text-brand-navy' %> mt-1">
+        <%= formatCOP(loan.outstandingBalance) %>
+      </p>
+    </div>
+
+    <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-4">
+      <p class="text-xs font-medium text-gray-500 uppercase tracking-wide">Total pagado</p>
+      <p class="text-xl font-bold text-green-600 mt-1"><%= formatCOP(loan.totalPaid) %></p>
+    </div>
+
+    <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-4">
+      <p class="text-xs font-medium text-gray-500 uppercase tracking-wide">Cuota</p>
+      <p class="text-xl font-bold text-brand-navy mt-1"><%= formatCOP(loan.installmentAmount) %></p>
+      <p class="text-xs text-gray-400 mt-0.5"><%= FREQ_MAP[loan.paymentFrequency] || loan.paymentFrequency %></p>
+    </div>
+
+  </div>
+
+  <!-- Progreso de cuotas -->
+  <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-4">
+    <div class="flex items-center justify-between mb-2">
+      <p class="text-sm font-medium text-gray-700">Progreso de cuotas</p>
+      <p class="text-sm font-semibold text-brand-navy">
+        <%= loan.paidPayments %> / <%= loan.numberOfPayments %>
+        <span class="text-gray-400 font-normal ml-1">(<%= progressPct %>%)</span>
+      </p>
+    </div>
+    <div class="w-full bg-gray-100 rounded-full h-2.5">
+      <div class="bg-brand-green h-2.5 rounded-full transition-all"
+           style="width: <%= progressPct %>%"></div>
+    </div>
+    <% if (loan.status === 'DEFAULTED' && loan.moraAmount && parseFloat(loan.moraAmount) > 0) { %>
+      <p class="mt-2 text-xs font-medium text-red-600">
+        ⚠️ Mora acumulada: <%= formatCOP(loan.moraAmount) %>
+      </p>
+    <% } %>
+  </div>
+
+  <!-- Datos generales + Datos del cliente -->
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+
+    <!-- Datos del préstamo -->
+    <div class="bg-white rounded-xl border border-gray-200 shadow-sm">
+      <div class="px-5 py-3 border-b border-gray-100">
+        <h2 class="text-sm font-semibold text-brand-navy uppercase tracking-wide">Datos del préstamo</h2>
+      </div>
+      <dl class="divide-y divide-gray-50">
+        <div class="flex justify-between px-5 py-3 text-sm">
+          <dt class="text-gray-500">Amortización</dt>
+          <dd class="font-medium text-gray-800"><%= AMORT_MAP[loan.amortizationType] || loan.amortizationType %></dd>
+        </div>
+        <div class="flex justify-between px-5 py-3 text-sm">
+          <dt class="text-gray-500">Tasa de interés</dt>
+          <dd class="font-medium text-gray-800">
+            <%= (parseFloat(loan.interestRate) * 100).toFixed(2) %>% por período
+          </dd>
+        </div>
+        <div class="flex justify-between px-5 py-3 text-sm">
+          <dt class="text-gray-500">Monto total</dt>
+          <dd class="font-medium text-gray-800"><%= formatCOP(loan.totalAmount) %></dd>
+        </div>
+        <div class="flex justify-between px-5 py-3 text-sm">
+          <dt class="text-gray-500">Fecha desembolso</dt>
+          <dd class="font-medium text-gray-800"><%= formatDate(loan.disbursementDate) %></dd>
+        </div>
+        <div class="flex justify-between px-5 py-3 text-sm">
+          <dt class="text-gray-500">Fecha fin esperada</dt>
+          <dd class="font-medium text-gray-800"><%= formatDate(loan.expectedEndDate) %></dd>
+        </div>
+        <% if (loan.actualEndDate) { %>
+          <div class="flex justify-between px-5 py-3 text-sm">
+            <dt class="text-gray-500">Fecha fin real</dt>
+            <dd class="font-medium text-green-600"><%= formatDate(loan.actualEndDate) %></dd>
+          </div>
+        <% } %>
+        <div class="flex justify-between px-5 py-3 text-sm">
+          <dt class="text-gray-500">Cobrador</dt>
+          <dd class="font-medium text-gray-800">
+            <%= loan.collector.firstName %> <%= loan.collector.lastName %>
+          </dd>
+        </div>
+      </dl>
+    </div>
+
+    <!-- Datos del cliente -->
+    <div class="bg-white rounded-xl border border-gray-200 shadow-sm">
+      <div class="px-5 py-3 border-b border-gray-100 flex items-center justify-between">
+        <h2 class="text-sm font-semibold text-brand-navy uppercase tracking-wide">Cliente</h2>
+        <a href="/admin/clients/<%= loan.client.id %>"
+           class="text-xs text-brand-green hover:underline font-medium">
+          Ver perfil →
+        </a>
+      </div>
+      <dl class="divide-y divide-gray-50">
+        <div class="flex justify-between px-5 py-3 text-sm">
+          <dt class="text-gray-500">Nombre</dt>
+          <dd class="font-medium text-gray-800">
+            <%= loan.client.firstName %> <%= loan.client.lastName %>
+          </dd>
+        </div>
+        <div class="flex justify-between px-5 py-3 text-sm">
+          <dt class="text-gray-500">Documento</dt>
+          <dd class="font-medium text-gray-800">
+            <%= loan.client.documentType %> <%= loan.client.documentNumber %>
+          </dd>
+        </div>
+        <% if (loan.client.phone) { %>
+          <div class="flex justify-between px-5 py-3 text-sm">
+            <dt class="text-gray-500">Teléfono</dt>
+            <dd class="font-medium text-gray-800"><%= loan.client.phone %></dd>
+          </div>
+        <% } %>
+        <% if (loan.client.address) { %>
+          <div class="flex justify-between px-5 py-3 text-sm">
+            <dt class="text-gray-500">Dirección</dt>
+            <dd class="font-medium text-gray-800 text-right max-w-xs"><%= loan.client.address %></dd>
+          </div>
+        <% } %>
+        <% if (loan.client.businessName) { %>
+          <div class="flex justify-between px-5 py-3 text-sm">
+            <dt class="text-gray-500">Negocio</dt>
+            <dd class="font-medium text-gray-800"><%= loan.client.businessName %></dd>
+          </div>
+        <% } %>
+        <% if (loan.client.route) { %>
+          <div class="flex justify-between px-5 py-3 text-sm">
+            <dt class="text-gray-500">Ruta</dt>
+            <dd class="font-medium text-gray-800"><%= loan.client.route.name %></dd>
+          </div>
+        <% } %>
+        <div class="flex justify-between px-5 py-3 text-sm">
+          <dt class="text-gray-500">Estado cliente</dt>
+          <dd>
+            <% if (loan.client.isActive) { %>
+              <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700">Activo</span>
+            <% } else { %>
+              <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-600">Inactivo</span>
+            <% } %>
+          </dd>
+        </div>
+      </dl>
+    </div>
+
+  </div>
+
+  <!-- Cronograma de pagos -->
+  <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+    <div class="px-5 py-3 border-b border-gray-100 flex items-center justify-between">
+      <h2 class="text-sm font-semibold text-brand-navy uppercase tracking-wide">
+        Cronograma de cuotas
+      </h2>
+      <span class="text-xs text-gray-400">
+        <%= loan.paymentSchedule.filter(s => s.isPaid).length %> pagadas /
+        <%= loan.paymentSchedule.length %> totales
+      </span>
+    </div>
+
+    <% if (loan.paymentSchedule.length === 0) { %>
+      <div class="py-8 text-center text-gray-400 text-sm">
+        No hay cronograma generado para este préstamo.
+      </div>
+    <% } else { %>
+      <div class="overflow-x-auto">
+        <table class="min-w-full divide-y divide-gray-200 text-sm">
+          <thead class="bg-gray-50">
+            <tr>
+              <th class="px-4 py-2.5 text-center text-xs font-semibold text-gray-500 uppercase tracking-wide w-12">#</th>
+              <th class="px-4 py-2.5 text-center text-xs font-semibold text-gray-500 uppercase tracking-wide">Vencimiento</th>
+              <th class="px-4 py-2.5 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">Capital</th>
+              <th class="px-4 py-2.5 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">Interés</th>
+              <th class="px-4 py-2.5 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">Cuota</th>
+              <th class="px-4 py-2.5 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">Pagado</th>
+              <th class="px-4 py-2.5 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">Mora</th>
+              <th class="px-4 py-2.5 text-center text-xs font-semibold text-gray-500 uppercase tracking-wide">Estado</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-gray-100">
+            <% loan.paymentSchedule.forEach(function(schedule) { %>
+              <tr class="<%= schedule.isPaid ? 'bg-green-50' : '' %> hover:bg-gray-50 transition-colors">
+                <td class="px-4 py-2.5 text-center text-gray-500 font-mono text-xs">
+                  <%= schedule.installmentNumber %>
+                </td>
+                <td class="px-4 py-2.5 text-center text-gray-700">
+                  <%= formatDate(schedule.dueDate) %>
+                  <% if (!schedule.isPaid) {
+                    const now = new Date();
+                    const due = new Date(schedule.dueDate);
+                    if (due < now) { %>
+                      <span class="ml-1 inline-flex px-1.5 py-0.5 rounded text-xs bg-red-100 text-red-600 font-medium">Vencida</span>
+                    <% }
+                  } %>
+                </td>
+                <td class="px-4 py-2.5 text-right tabular-nums text-gray-700"><%= formatCOP(schedule.principalDue) %></td>
+                <td class="px-4 py-2.5 text-right tabular-nums text-gray-700"><%= formatCOP(schedule.interestDue) %></td>
+                <td class="px-4 py-2.5 text-right tabular-nums font-medium text-gray-800"><%= formatCOP(schedule.amountDue) %></td>
+                <td class="px-4 py-2.5 text-right tabular-nums text-green-600">
+                  <%= parseFloat(schedule.amountPaid) > 0 ? formatCOP(schedule.amountPaid) : '—' %>
+                </td>
+                <td class="px-4 py-2.5 text-right tabular-nums text-red-500">
+                  <%= parseFloat(schedule.moraCharged) > 0 ? formatCOP(schedule.moraCharged) : '—' %>
+                </td>
+                <td class="px-4 py-2.5 text-center">
+                  <% if (schedule.isPaid) { %>
+                    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700">
+                      ✓ Pagada
+                    </span>
+                  <% } else { %>
+                    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-700">
+                      Pendiente
+                    </span>
+                  <% } %>
+                </td>
+              </tr>
+            <% }); %>
+          </tbody>
+        </table>
+      </div>
+    <% } %>
+  </div>
+
+  <!-- Últimos pagos registrados -->
+  <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+    <div class="px-5 py-3 border-b border-gray-100">
+      <h2 class="text-sm font-semibold text-brand-navy uppercase tracking-wide">
+        Pagos registrados
+        <% if (loan.payments.length > 0) { %>
+          <span class="ml-1 text-gray-400 font-normal normal-case text-xs">
+            (últimos <%= loan.payments.length %>)
+          </span>
+        <% } %>
+      </h2>
+    </div>
+
+    <% if (loan.payments.length === 0) { %>
+      <div class="py-8 text-center text-gray-400 text-sm">
+        No hay pagos registrados aún.
+      </div>
+    <% } else { %>
+      <div class="overflow-x-auto">
+        <table class="min-w-full divide-y divide-gray-200 text-sm">
+          <thead class="bg-gray-50">
+            <tr>
+              <th class="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Fecha</th>
+              <th class="px-4 py-2.5 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">Monto</th>
+              <th class="px-4 py-2.5 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">Mora</th>
+              <th class="px-4 py-2.5 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">Total recibido</th>
+              <th class="px-4 py-2.5 text-center text-xs font-semibold text-gray-500 uppercase tracking-wide">Método</th>
+              <th class="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Cobrador</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-gray-100">
+            <% loan.payments.forEach(function(payment) { %>
+              <tr class="hover:bg-gray-50 transition-colors">
+                <td class="px-4 py-2.5 text-gray-700"><%= formatDateTime(payment.collectedAt) %></td>
+                <td class="px-4 py-2.5 text-right tabular-nums text-gray-800 font-medium"><%= formatCOP(payment.amount) %></td>
+                <td class="px-4 py-2.5 text-right tabular-nums text-red-500">
+                  <%= parseFloat(payment.moraAmount) > 0 ? formatCOP(payment.moraAmount) : '—' %>
+                </td>
+                <td class="px-4 py-2.5 text-right tabular-nums font-semibold text-green-600"><%= formatCOP(payment.totalReceived) %></td>
+                <td class="px-4 py-2.5 text-center">
+                  <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
+                    <%= payment.paymentMethod %>
+                  </span>
+                </td>
+                <td class="px-4 py-2.5 text-gray-700">
+                  <%= payment.collector.firstName %> <%= payment.collector.lastName %>
+                </td>
+              </tr>
+            <% }); %>
+          </tbody>
+        </table>
+      </div>
+    <% } %>
+  </div>
+
+  <!-- Incidentes -->
+  <% if (loan.incidents.length > 0) { %>
+    <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+      <div class="px-5 py-3 border-b border-gray-100">
+        <h2 class="text-sm font-semibold text-brand-navy uppercase tracking-wide">
+          Incidentes
+          <span class="ml-1 inline-flex items-center justify-center w-5 h-5 rounded-full bg-red-100 text-red-600 text-xs font-bold">
+            <%= loan.incidents.length %>
+          </span>
+        </h2>
+      </div>
+      <ul class="divide-y divide-gray-100">
+        <% loan.incidents.forEach(function(incident) {
+          const inc = INCIDENT_MAP[incident.type] || { icon: '⚠️', label: incident.type };
+        %>
+          <li class="flex items-start gap-3 px-5 py-3">
+            <span class="text-xl mt-0.5"><%= inc.icon %></span>
+            <div class="flex-1 min-w-0">
+              <p class="text-sm font-medium text-gray-800"><%= inc.label %></p>
+              <% if (incident.description) { %>
+                <p class="text-xs text-gray-500 mt-0.5"><%= incident.description %></p>
+              <% } %>
+              <p class="text-xs text-gray-400 mt-1">
+                <%= formatDateTime(incident.reportedAt) %> ·
+                <%= incident.collector.firstName %> <%= incident.collector.lastName %>
+              </p>
+            </div>
+          </li>
+        <% }); %>
+      </ul>
+    </div>
+  <% } %>
+
+  <!-- Notas -->
+  <% if (loan.notes) { %>
+    <div class="bg-amber-50 border border-amber-200 rounded-xl px-5 py-4">
+      <p class="text-xs font-semibold text-amber-700 uppercase tracking-wide mb-1">📝 Notas internas</p>
+      <p class="text-sm text-amber-800"><%= loan.notes %></p>
+    </div>
+  <% } %>
+
+</div>
+
+<%- include('../../layouts/footer') %>

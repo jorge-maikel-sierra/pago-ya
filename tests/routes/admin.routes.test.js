@@ -1,0 +1,347 @@
+import { jest, describe, it, expect, beforeEach } from '@jest/globals';
+
+// --- Mocks: stubs para cada handler del controller ---
+const mockGetLogin = jest.fn((req, res) => res.status(200).end());
+const mockPostLogin = jest.fn((req, res) => res.status(200).end());
+const mockGetDashboard = jest.fn((req, res) => res.status(200).end());
+const mockGetLoans = jest.fn((req, res) => res.status(200).end());
+const mockGetNewLoan = jest.fn((req, res) => res.status(200).end());
+const mockPreviewLoan = jest.fn((req, res) => res.status(200).end());
+const mockCreateLoan = jest.fn((req, res) => res.status(200).end());
+const mockGetLoan = jest.fn((req, res) => res.status(200).end());
+const mockGetClients = jest.fn((req, res) => res.status(200).end());
+const mockGetClient = jest.fn((req, res) => res.status(200).end());
+const mockRestrictClient = jest.fn((req, res) => res.status(200).end());
+const mockGetCollectors = jest.fn((req, res) => res.status(200).end());
+const mockGetPayments = jest.fn((req, res) => res.status(200).end());
+const mockGetRoutes = jest.fn((req, res) => res.status(200).end());
+const mockGetReports = jest.fn((req, res) => res.status(200).end());
+const mockExportReport = jest.fn((req, res) => res.status(200).end());
+const mockGetSettings = jest.fn((req, res) => res.status(200).end());
+const mockGetUsers = jest.fn((req, res) => res.status(200).end());
+const mockGetOrganizations = jest.fn((req, res) => res.status(200).end());
+const mockLogout = jest.fn((req, res) => res.status(200).end());
+
+jest.unstable_mockModule('../../src/controllers/admin.controller.js', () => ({
+  getLogin: mockGetLogin,
+  postLogin: mockPostLogin,
+  getDashboard: mockGetDashboard,
+  getLoans: mockGetLoans,
+  getNewLoan: mockGetNewLoan,
+  previewLoan: mockPreviewLoan,
+  createLoan: mockCreateLoan,
+  getLoan: mockGetLoan,
+  getClients: mockGetClients,
+  getClient: mockGetClient,
+  restrictClient: mockRestrictClient,
+  getCollectors: mockGetCollectors,
+  getPayments: mockGetPayments,
+  getRoutes: mockGetRoutes,
+  getReports: mockGetReports,
+  getSettings: mockGetSettings,
+  getUsers: mockGetUsers,
+  getOrganizations: mockGetOrganizations,
+  logout: mockLogout,
+}));
+
+jest.unstable_mockModule('../../src/controllers/report.controller.js', () => ({
+  exportReport: mockExportReport,
+}));
+
+// Mock auth middleware: simula sesión válida si se provee en req
+const mockVerifySession = jest.fn((req, res, next) => {
+  if (!req.session || !req.session.user) {
+    return res.redirect('/admin/login');
+  }
+  req.user = req.session.user;
+  return next();
+});
+
+jest.unstable_mockModule('../../src/middleware/auth.js', () => ({
+  verifySession: mockVerifySession,
+  verifyToken: jest.fn(),
+}));
+
+// Mock authorize: permite roles válidos
+const mockAuthorize = jest.fn((...roles) => (req, res, next) => {
+  if (!req.user) {
+    return res.status(401).json({ success: false, message: 'No autenticado' });
+  }
+  if (!roles.includes(req.user.role)) {
+    return res.status(403).json({ success: false, message: 'No autorizado' });
+  }
+  return next();
+});
+
+jest.unstable_mockModule('../../src/middleware/authorize.js', () => ({
+  default: mockAuthorize,
+}));
+
+// Importar express y el router DESPUÉS de mockear
+const express = (await import('express')).default;
+const adminRoutes = (await import('../../src/routes/admin.routes.js')).default;
+
+// Importar supertest para pruebas HTTP
+const request = (await import('supertest')).default;
+
+// --- App de prueba ---
+const createApp = () => {
+  const app = express();
+  app.use(express.json());
+  app.use(express.urlencoded({ extended: true }));
+
+  // Simular middleware de sesión
+  app.use((req, _res, next) => {
+    req.session = req.headers['x-test-session'] ? JSON.parse(req.headers['x-test-session']) : {};
+    next();
+  });
+
+  app.use('/admin', adminRoutes);
+  return app;
+};
+
+const adminSession = JSON.stringify({
+  user: {
+    id: 'user-001',
+    role: 'ADMIN',
+    organizationId: 'org-001',
+    firstName: 'Admin',
+    lastName: 'Test',
+    email: 'admin@test.com',
+  },
+});
+
+describe('admin.routes', () => {
+  let app;
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    app = createApp();
+  });
+
+  describe('public routes (no session required)', () => {
+    it('GET /admin/login does not invoke verifySession', async () => {
+      await request(app).get('/admin/login').expect(200);
+
+      expect(mockGetLogin).toHaveBeenCalled();
+      expect(mockVerifySession).not.toHaveBeenCalled();
+    });
+
+    it('POST /admin/login does not invoke verifySession', async () => {
+      await request(app)
+        .post('/admin/login')
+        .send({ email: 'a@b.com', password: '123456' })
+        .expect(200);
+
+      expect(mockPostLogin).toHaveBeenCalled();
+      expect(mockVerifySession).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('protected routes (session required)', () => {
+    it('GET /admin/dashboard redirects to login without session', async () => {
+      const res = await request(app).get('/admin/dashboard');
+
+      expect(res.status).toBe(302);
+      expect(res.headers.location).toBe('/admin/login');
+    });
+
+    it('GET /admin/dashboard calls handler with valid session', async () => {
+      await request(app).get('/admin/dashboard').set('x-test-session', adminSession).expect(200);
+
+      expect(mockGetDashboard).toHaveBeenCalled();
+    });
+
+    it('GET /admin/ redirects to /admin/dashboard', async () => {
+      const res = await request(app).get('/admin/').set('x-test-session', adminSession);
+
+      expect(res.status).toBe(302);
+      expect(res.headers.location).toBe('/admin/dashboard');
+    });
+  });
+
+  describe('loan routes', () => {
+    it('GET /admin/loans calls getLoans', async () => {
+      await request(app).get('/admin/loans').set('x-test-session', adminSession).expect(200);
+
+      expect(mockGetLoans).toHaveBeenCalled();
+    });
+
+    it('GET /admin/loans/new calls getNewLoan', async () => {
+      await request(app).get('/admin/loans/new').set('x-test-session', adminSession).expect(200);
+
+      expect(mockGetNewLoan).toHaveBeenCalled();
+    });
+
+    it('POST /admin/loans calls createLoan', async () => {
+      await request(app)
+        .post('/admin/loans')
+        .set('x-test-session', adminSession)
+        .send({ clientId: 'c-001', principal: 100000 })
+        .expect(200);
+
+      expect(mockCreateLoan).toHaveBeenCalled();
+    });
+
+    it('GET /admin/loans/:id calls getLoan', async () => {
+      await request(app)
+        .get('/admin/loans/loan-123')
+        .set('x-test-session', adminSession)
+        .expect(200);
+
+      expect(mockGetLoan).toHaveBeenCalled();
+    });
+  });
+
+  describe('client routes', () => {
+    it('GET /admin/clients calls getClients', async () => {
+      await request(app).get('/admin/clients').set('x-test-session', adminSession).expect(200);
+
+      expect(mockGetClients).toHaveBeenCalled();
+    });
+
+    it('GET /admin/clients/:id calls getClient', async () => {
+      await request(app)
+        .get('/admin/clients/client-456')
+        .set('x-test-session', adminSession)
+        .expect(200);
+
+      expect(mockGetClient).toHaveBeenCalled();
+    });
+
+    it('PUT /admin/clients/:id/restrict calls restrictClient', async () => {
+      await request(app)
+        .put('/admin/clients/client-456/restrict')
+        .set('x-test-session', adminSession)
+        .expect(200);
+
+      expect(mockRestrictClient).toHaveBeenCalled();
+    });
+  });
+
+  describe('collector routes', () => {
+    it('GET /admin/collectors calls getCollectors', async () => {
+      await request(app).get('/admin/collectors').set('x-test-session', adminSession).expect(200);
+
+      expect(mockGetCollectors).toHaveBeenCalled();
+    });
+  });
+
+  describe('route routes', () => {
+    it('GET /admin/routes calls getRoutes', async () => {
+      await request(app).get('/admin/routes').set('x-test-session', adminSession).expect(200);
+
+      expect(mockGetRoutes).toHaveBeenCalled();
+    });
+  });
+
+  describe('payment routes', () => {
+    it('GET /admin/payments calls getPayments', async () => {
+      await request(app).get('/admin/payments').set('x-test-session', adminSession).expect(200);
+
+      expect(mockGetPayments).toHaveBeenCalled();
+    });
+  });
+
+  describe('report routes', () => {
+    it('GET /admin/reports calls getReports', async () => {
+      await request(app).get('/admin/reports').set('x-test-session', adminSession).expect(200);
+
+      expect(mockGetReports).toHaveBeenCalled();
+    });
+
+    it('GET /admin/reports/export/:format calls exportReport', async () => {
+      await request(app)
+        .get('/admin/reports/export/csv')
+        .set('x-test-session', adminSession)
+        .expect(200);
+
+      expect(mockExportReport).toHaveBeenCalled();
+    });
+  });
+
+  describe('settings routes', () => {
+    it('GET /admin/settings calls getSettings', async () => {
+      await request(app).get('/admin/settings').set('x-test-session', adminSession).expect(200);
+
+      expect(mockGetSettings).toHaveBeenCalled();
+    });
+  });
+
+  describe('SUPER_ADMIN only routes', () => {
+    const superSession = JSON.stringify({
+      user: {
+        id: 'user-003',
+        role: 'SUPER_ADMIN',
+        organizationId: 'org-001',
+        firstName: 'Super',
+        lastName: 'Admin',
+      },
+    });
+
+    it('GET /admin/users calls getUsers for SUPER_ADMIN', async () => {
+      await request(app).get('/admin/users').set('x-test-session', superSession).expect(200);
+
+      expect(mockGetUsers).toHaveBeenCalled();
+    });
+
+    it('GET /admin/organizations calls getOrganizations for SUPER_ADMIN', async () => {
+      await request(app)
+        .get('/admin/organizations')
+        .set('x-test-session', superSession)
+        .expect(200);
+
+      expect(mockGetOrganizations).toHaveBeenCalled();
+    });
+
+    it('returns 403 for ADMIN role on /admin/users', async () => {
+      const res = await request(app).get('/admin/users').set('x-test-session', adminSession);
+
+      expect(res.status).toBe(403);
+    });
+
+    it('returns 403 for ADMIN role on /admin/organizations', async () => {
+      const res = await request(app)
+        .get('/admin/organizations')
+        .set('x-test-session', adminSession);
+
+      expect(res.status).toBe(403);
+    });
+  });
+
+  describe('RBAC enforcement', () => {
+    it('returns 403 for COLLECTOR role on protected routes', async () => {
+      const collectorSession = JSON.stringify({
+        user: {
+          id: 'user-002',
+          role: 'COLLECTOR',
+          organizationId: 'org-001',
+          firstName: 'Cobrador',
+          lastName: 'Test',
+        },
+      });
+
+      const res = await request(app)
+        .get('/admin/dashboard')
+        .set('x-test-session', collectorSession);
+
+      expect(res.status).toBe(403);
+    });
+
+    it('allows SUPER_ADMIN role on protected routes', async () => {
+      const superSession = JSON.stringify({
+        user: {
+          id: 'user-003',
+          role: 'SUPER_ADMIN',
+          organizationId: 'org-001',
+          firstName: 'Super',
+          lastName: 'Admin',
+        },
+      });
+
+      await request(app).get('/admin/dashboard').set('x-test-session', superSession).expect(200);
+
+      expect(mockGetDashboard).toHaveBeenCalled();
+    });
+  });
+});

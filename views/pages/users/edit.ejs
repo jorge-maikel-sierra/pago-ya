@@ -1,0 +1,226 @@
+<%
+/**
+ * Vista: users/edit.ejs
+ * Formulario para editar un usuario existente.
+ *
+ * Variables locales esperadas:
+ * - user: Usuario autenticado
+ * - targetUser: Usuario a editar
+ * - flashError: Mensaje de error opcional
+ */
+
+const ROLE_OPTIONS = [
+  { value: 'COLLECTOR', label: 'Cobrador', description: 'Registra pagos en rutas asignadas' },
+  { value: 'ADMIN', label: 'Administrador', description: 'Gestiona préstamos, clientes y reportes' },
+];
+%>
+<%- include('../../layouts/header') %>
+
+<div class="p-4 sm:p-6 lg:p-8 space-y-6">
+
+  <!-- =========================================
+       ENCABEZADO
+  ========================================= -->
+  <div class="flex items-center gap-4">
+    <a href="/admin/users"
+       class="inline-flex items-center justify-center w-10 h-10 rounded-lg border border-gray-300
+              text-gray-500 hover:bg-gray-50 transition-colors">
+      ←
+    </a>
+    <div>
+      <h1 class="text-2xl font-bold text-brand-navy">Editar Usuario</h1>
+      <p class="text-sm text-gray-500 mt-1">
+        Modificando: <span class="font-medium"><%= targetUser.firstName %> <%= targetUser.lastName %></span>
+      </p>
+    </div>
+  </div>
+
+  <!-- =========================================
+       MENSAJE DE ERROR
+  ========================================= -->
+  <% if (typeof flashError !== 'undefined' && flashError) { %>
+    <div class="rounded-lg bg-red-50 border border-red-200 p-4" role="alert">
+      <div class="flex items-center gap-2">
+        <span class="text-red-600 text-lg">❌</span>
+        <p class="text-sm font-medium text-red-800"><%= flashError %></p>
+      </div>
+    </div>
+  <% } %>
+
+  <!-- =========================================
+       FORMULARIO (usando method-override para PUT)
+  ========================================= -->
+  <form method="POST" action="/admin/users/<%= targetUser.id %>?_method=PUT"
+        class="bg-white rounded-xl border border-gray-200 shadow-sm p-6 max-w-2xl">
+
+    <!-- Información Personal -->
+    <div class="mb-8">
+      <h2 class="text-lg font-semibold text-brand-navy mb-4 pb-2 border-b border-gray-100">
+        👤 Información Personal
+      </h2>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+
+        <!-- Nombre -->
+        <div>
+          <label for="firstName" class="block text-sm font-medium text-gray-700 mb-2">
+            Nombre <span class="text-red-500">*</span>
+          </label>
+          <input
+            type="text"
+            id="firstName"
+            name="firstName"
+            required
+            minlength="2"
+            maxlength="80"
+            value="<%= targetUser.firstName %>"
+            class="w-full px-4 py-3 rounded-lg border border-gray-300 text-sm text-gray-700
+                   focus:ring-2 focus:ring-brand-green focus:border-brand-green focus:outline-none
+                   transition"
+          />
+        </div>
+
+        <!-- Apellido -->
+        <div>
+          <label for="lastName" class="block text-sm font-medium text-gray-700 mb-2">
+            Apellido <span class="text-red-500">*</span>
+          </label>
+          <input
+            type="text"
+            id="lastName"
+            name="lastName"
+            required
+            minlength="2"
+            maxlength="80"
+            value="<%= targetUser.lastName %>"
+            class="w-full px-4 py-3 rounded-lg border border-gray-300 text-sm text-gray-700
+                   focus:ring-2 focus:ring-brand-green focus:border-brand-green focus:outline-none
+                   transition"
+          />
+        </div>
+
+        <!-- Email -->
+        <div>
+          <label for="email" class="block text-sm font-medium text-gray-700 mb-2">
+            Email <span class="text-red-500">*</span>
+          </label>
+          <input
+            type="email"
+            id="email"
+            name="email"
+            required
+            maxlength="100"
+            value="<%= targetUser.email %>"
+            class="w-full px-4 py-3 rounded-lg border border-gray-300 text-sm text-gray-700
+                   focus:ring-2 focus:ring-brand-green focus:border-brand-green focus:outline-none
+                   transition"
+          />
+        </div>
+
+        <!-- Teléfono -->
+        <div>
+          <label for="phone" class="block text-sm font-medium text-gray-700 mb-2">
+            Teléfono
+          </label>
+          <input
+            type="tel"
+            id="phone"
+            name="phone"
+            maxlength="20"
+            value="<%= targetUser.phone || '' %>"
+            placeholder="+57 300 123 4567"
+            class="w-full px-4 py-3 rounded-lg border border-gray-300 text-sm text-gray-700
+                   focus:ring-2 focus:ring-brand-green focus:border-brand-green focus:outline-none
+                   transition"
+          />
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Rol y Acceso -->
+    <div class="mb-8">
+      <h2 class="text-lg font-semibold text-brand-navy mb-4 pb-2 border-b border-gray-100">
+        🔐 Rol y Acceso
+      </h2>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+
+        <!-- Rol -->
+        <div>
+          <label for="role" class="block text-sm font-medium text-gray-700 mb-2">
+            Rol <span class="text-red-500">*</span>
+          </label>
+          <select
+            id="role"
+            name="role"
+            required
+            class="w-full px-4 py-3 rounded-lg border border-gray-300 text-sm text-gray-700
+                   bg-white focus:ring-2 focus:ring-brand-green focus:border-brand-green
+                   focus:outline-none transition"
+          >
+            <% ROLE_OPTIONS.forEach(function(r) { %>
+              <option value="<%= r.value %>" <%= targetUser.role === r.value ? 'selected' : '' %>>
+                <%= r.label %> - <%= r.description %>
+              </option>
+            <% }); %>
+          </select>
+        </div>
+
+        <!-- Contraseña (opcional en edición) -->
+        <div>
+          <label for="password" class="block text-sm font-medium text-gray-700 mb-2">
+            Nueva Contraseña
+          </label>
+          <input
+            type="password"
+            id="password"
+            name="password"
+            minlength="6"
+            maxlength="100"
+            placeholder="Dejar vacío para no cambiar"
+            class="w-full px-4 py-3 rounded-lg border border-gray-300 text-sm text-gray-700
+                   focus:ring-2 focus:ring-brand-green focus:border-brand-green focus:outline-none
+                   transition"
+          />
+          <p class="mt-1 text-xs text-gray-400">Solo completa si deseas cambiar la contraseña</p>
+        </div>
+
+      </div>
+
+      <!-- Estado Activo -->
+      <div class="mt-5 flex items-center gap-3">
+        <input
+          type="checkbox"
+          id="isActive"
+          name="isActive"
+          <%= targetUser.isActive ? 'checked' : '' %>
+          class="w-5 h-5 rounded border-gray-300 text-brand-green focus:ring-brand-green"
+        />
+        <label for="isActive" class="text-sm text-gray-700">
+          Usuario activo (puede iniciar sesión)
+        </label>
+      </div>
+    </div>
+
+    <!-- =========================================
+         BOTONES DE ACCIÓN
+    ========================================= -->
+    <div class="flex flex-col sm:flex-row gap-3 pt-6 border-t border-gray-100">
+      <button type="submit"
+              class="flex-1 inline-flex items-center justify-center gap-2 px-6 py-3 rounded-lg
+                     bg-brand-green text-white text-sm font-semibold
+                     hover:bg-green-500 transition-colors shadow-sm">
+        💾 Guardar Cambios
+      </button>
+      <a href="/admin/users"
+         class="flex-1 inline-flex items-center justify-center gap-2 px-6 py-3 rounded-lg
+                border border-gray-300 text-gray-600 text-sm font-medium
+                hover:bg-gray-50 transition-colors">
+        Cancelar
+      </a>
+    </div>
+
+  </form>
+
+</div>
+
+<%- include('../../layouts/footer') %>

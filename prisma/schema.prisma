@@ -1,0 +1,310 @@
+// ============================================
+// Paga Diario - Prisma Schema
+// PostgreSQL 16 + PostGIS
+// Todos los campos monetarios usan Decimal(14,2)
+// ============================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================
+// ENUMS
+// ============================================
+
+enum UserRole {
+  SUPER_ADMIN
+  ADMIN
+  COLLECTOR
+}
+
+enum LoanStatus {
+  PENDING
+  ACTIVE
+  COMPLETED
+  DEFAULTED
+  CANCELLED
+}
+
+enum AmortizationType {
+  FIXED
+  DECLINING_BALANCE
+}
+
+enum PaymentFrequency {
+  DAILY
+  WEEKLY
+  BIWEEKLY
+  MONTHLY
+}
+
+enum IncidentType {
+  CLIENT_ABSENT
+  PARTIAL_PAYMENT
+  REFUSED_PAYMENT
+  ADDRESS_NOT_FOUND
+  OTHER
+}
+
+// ============================================
+// MODELOS
+// ============================================
+
+/// Organización o negocio que opera préstamos
+model Organization {
+  id        String   @id @default(uuid()) @db.Uuid
+  name      String   @db.VarChar(150)
+  nit       String?  @unique @db.VarChar(20)
+  phone     String?  @db.VarChar(20)
+  email     String?  @db.VarChar(100)
+  address   String?  @db.VarChar(255)
+  logoUrl   String?  @map("logo_url") @db.VarChar(500)
+
+  // --- Suscripción y plan ---
+  planType         String    @default("BASIC") @map("plan_type") @db.VarChar(20)
+  subscriptionEnds DateTime? @map("subscription_ends") @db.Date
+
+  // --- Configuración de mora ---
+  moraGraceDays  Int     @default(3) @map("mora_grace_days")
+  moraMultiplier Decimal @default(1.5) @map("mora_multiplier") @db.Decimal(4, 2)
+
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  users   User[]
+  routes  Route[]
+  loans   Loan[]
+  clients Client[]
+
+  @@map("organizations")
+}
+
+/// Usuario del sistema (admin, cobrador)
+model User {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  role           UserRole @default(COLLECTOR)
+  firstName      String   @map("first_name") @db.VarChar(80)
+  lastName       String   @map("last_name") @db.VarChar(80)
+  email          String   @unique @db.VarChar(100)
+  phone          String?  @db.VarChar(20)
+  passwordHash   String   @map("password_hash") @db.VarChar(255)
+  isActive       Boolean  @default(true) @map("is_active")
+  lastLoginAt    DateTime? @map("last_login_at")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  organization Organization  @relation(fields: [organizationId], references: [id])
+  routes       Route[]
+  loans        Loan[]
+  payments     Payment[]
+  incidents    Incident[]
+  gpsLocations GpsLocation[]
+
+  @@index([organizationId])
+  @@index([email])
+  @@map("users")
+}
+
+/// Cliente que recibe préstamos
+model Client {
+  id               String   @id @default(uuid()) @db.Uuid
+  organizationId   String?  @map("organization_id") @db.Uuid
+  routeId          String?  @map("route_id") @db.Uuid
+  firstName        String   @map("first_name") @db.VarChar(80)
+  lastName         String   @map("last_name") @db.VarChar(80)
+  documentType     String   @default("CC") @map("document_type") @db.VarChar(10)
+  documentNumber   String   @map("document_number") @db.VarChar(30)
+  phone            String?  @db.VarChar(20)
+  address          String?  @db.VarChar(255)
+  neighborhood     String?  @db.VarChar(100)
+  city             String   @default("Riohacha") @db.VarChar(100)
+  referenceContact String?  @map("reference_contact") @db.VarChar(100)
+  referencePhone   String?  @map("reference_phone") @db.VarChar(20)
+  businessName     String?  @map("business_name") @db.VarChar(150)
+  businessAddress  String?  @map("business_address") @db.VarChar(255)
+  latitude         Decimal? @db.Decimal(10, 7)
+  longitude        Decimal? @db.Decimal(10, 7)
+  notes            String?  @db.Text
+  creditScore      Int      @default(100) @map("credit_score")
+  isActive         Boolean  @default(true) @map("is_active")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  organization Organization? @relation(fields: [organizationId], references: [id])
+  route        Route?        @relation(fields: [routeId], references: [id])
+  loans        Loan[]
+
+  @@unique([organizationId, documentType, documentNumber])
+  @@index([organizationId])
+  @@index([routeId])
+  @@index([documentNumber])
+  @@map("clients")
+}
+
+/// Ruta de cobro asignada a un cobrador
+model Route {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  collectorId    String?  @map("collector_id") @db.Uuid
+  name           String   @db.VarChar(100)
+  description    String?  @db.VarChar(255)
+  isActive       Boolean  @default(true) @map("is_active")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  collector    User?        @relation(fields: [collectorId], references: [id])
+  clients      Client[]
+
+  @@index([organizationId])
+  @@index([collectorId])
+  @@map("routes")
+}
+
+/// Préstamo otorgado a un cliente
+model Loan {
+  id                String            @id @default(uuid()) @db.Uuid
+  organizationId    String            @map("organization_id") @db.Uuid
+  clientId          String            @map("client_id") @db.Uuid
+  collectorId       String            @map("collector_id") @db.Uuid
+  status            LoanStatus        @default(PENDING)
+  amortizationType  AmortizationType  @default(FIXED) @map("amortization_type")
+  paymentFrequency  PaymentFrequency  @default(DAILY) @map("payment_frequency")
+
+  // --- Campos monetarios: SIEMPRE Decimal(14,2) ---
+  principalAmount   Decimal           @map("principal_amount") @db.Decimal(14, 2)
+  interestRate      Decimal           @map("interest_rate") @db.Decimal(6, 4)
+  totalAmount       Decimal           @map("total_amount") @db.Decimal(14, 2)
+  installmentAmount Decimal           @map("installment_amount") @db.Decimal(14, 2)
+  totalPaid         Decimal           @default(0) @map("total_paid") @db.Decimal(14, 2)
+  outstandingBalance Decimal          @map("outstanding_balance") @db.Decimal(14, 2)
+  moraAmount        Decimal           @default(0) @map("mora_amount") @db.Decimal(14, 2)
+
+  numberOfPayments  Int               @map("number_of_payments")
+  paidPayments      Int               @default(0) @map("paid_payments")
+  disbursementDate  DateTime          @map("disbursement_date") @db.Date
+  expectedEndDate   DateTime          @map("expected_end_date") @db.Date
+  actualEndDate     DateTime?         @map("actual_end_date") @db.Date
+  notes             String?           @db.Text
+  createdAt         DateTime          @default(now()) @map("created_at")
+  updatedAt         DateTime          @updatedAt @map("updated_at")
+
+  organization    Organization      @relation(fields: [organizationId], references: [id])
+  client          Client            @relation(fields: [clientId], references: [id])
+  collector       User              @relation(fields: [collectorId], references: [id])
+  paymentSchedule PaymentSchedule[]
+  payments        Payment[]
+  incidents       Incident[]
+
+  @@index([organizationId])
+  @@index([clientId])
+  @@index([collectorId])
+  @@index([status])
+  @@index([disbursementDate])
+  @@map("loans")
+}
+
+/// Cuota programada dentro del cronograma de pagos
+model PaymentSchedule {
+  id              String   @id @default(uuid()) @db.Uuid
+  loanId          String   @map("loan_id") @db.Uuid
+  installmentNumber Int    @map("installment_number")
+  dueDate         DateTime @map("due_date") @db.Date
+
+  // --- Campos monetarios ---
+  amountDue       Decimal  @map("amount_due") @db.Decimal(14, 2)
+  principalDue    Decimal  @map("principal_due") @db.Decimal(14, 2)
+  interestDue     Decimal  @map("interest_due") @db.Decimal(14, 2)
+  amountPaid      Decimal  @default(0) @map("amount_paid") @db.Decimal(14, 2)
+  moraCharged     Decimal  @default(0) @map("mora_charged") @db.Decimal(14, 2)
+
+  isPaid          Boolean  @default(false) @map("is_paid")
+  paidAt          DateTime? @map("paid_at")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  loan     Loan      @relation(fields: [loanId], references: [id], onDelete: Cascade)
+  payments Payment[]
+
+  @@unique([loanId, installmentNumber])
+  @@index([loanId])
+  @@index([dueDate])
+  @@index([isPaid])
+  @@map("payment_schedules")
+}
+
+/// Pago registrado por un cobrador
+model Payment {
+  id                String   @id @default(uuid()) @db.Uuid
+  loanId            String   @map("loan_id") @db.Uuid
+  paymentScheduleId String?  @map("payment_schedule_id") @db.Uuid
+  collectorId       String   @map("collector_id") @db.Uuid
+
+  // --- Campos monetarios ---
+  amount            Decimal  @map("amount") @db.Decimal(14, 2)
+  moraAmount        Decimal  @default(0) @map("mora_amount") @db.Decimal(14, 2)
+  totalReceived     Decimal  @map("total_received") @db.Decimal(14, 2)
+
+  paymentMethod     String   @default("CASH") @map("payment_method") @db.VarChar(20)
+  latitude          Decimal? @db.Decimal(10, 7)
+  longitude         Decimal? @db.Decimal(10, 7)
+  notes             String?  @db.Text
+  telegramSent      Boolean  @default(false) @map("telegram_sent")
+  collectedAt       DateTime @default(now()) @map("collected_at")
+  createdAt         DateTime @default(now()) @map("created_at")
+
+  loan            Loan             @relation(fields: [loanId], references: [id])
+  paymentSchedule PaymentSchedule? @relation(fields: [paymentScheduleId], references: [id])
+  collector       User             @relation(fields: [collectorId], references: [id])
+
+  @@index([loanId])
+  @@index([paymentScheduleId])
+  @@index([collectorId])
+  @@index([collectedAt])
+  @@map("payments")
+}
+
+/// Incidente reportado durante la ruta de cobro
+model Incident {
+  id          String       @id @default(uuid()) @db.Uuid
+  loanId      String       @map("loan_id") @db.Uuid
+  collectorId String       @map("collector_id") @db.Uuid
+  type        IncidentType
+  description String?      @db.Text
+  latitude    Decimal?     @db.Decimal(10, 7)
+  longitude   Decimal?     @db.Decimal(10, 7)
+  photoUrl    String?      @map("photo_url") @db.VarChar(500)
+  reportedAt  DateTime     @default(now()) @map("reported_at")
+  createdAt   DateTime     @default(now()) @map("created_at")
+
+  loan      Loan @relation(fields: [loanId], references: [id])
+  collector User @relation(fields: [collectorId], references: [id])
+
+  @@index([loanId])
+  @@index([collectorId])
+  @@index([reportedAt])
+  @@map("incidents")
+}
+
+/// Ubicación GPS del cobrador durante la jornada
+model GpsLocation {
+  id          String   @id @default(uuid()) @db.Uuid
+  collectorId String   @map("collector_id") @db.Uuid
+  latitude    Decimal  @db.Decimal(10, 7)
+  longitude   Decimal  @db.Decimal(10, 7)
+  accuracy    Decimal? @db.Decimal(8, 2)
+  recordedAt  DateTime @default(now()) @map("recorded_at")
+
+  collector User @relation(fields: [collectorId], references: [id])
+
+  @@index([collectorId])
+  @@index([recordedAt])
+  @@map("gps_locations")
+}

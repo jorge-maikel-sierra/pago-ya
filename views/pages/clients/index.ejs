@@ -1,0 +1,143 @@
+<%- include('../../layouts/header') %>
+
+<div class="p-4 sm:p-6 lg:p-8 space-y-6">
+
+  <!-- =========================================
+       MENSAJE DE ÉXITO
+  ========================================= -->
+  <% if (typeof flashSucess !== 'undefined' && flashSucess) { %>
+    <div class="rounded-lg bg-green-50 border border-green-200 p-4" role="alert">
+      <div class="flex items-center gap-2">
+        <span class="text-green-600 text-lg">✅</span>
+        <p class="text-sm font-medium text-green-800"><%= flashSucess %></p>
+      </div>
+    </div>
+  <% } %>
+
+  <!-- Header -->
+  <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+    <div>
+      <h1 class="text-2xl font-bold text-brand-navy dark:text-white">Clientes</h1>
+      <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
+        <%= clients.length %> cliente<%= clients.length !== 1 ? 's' : '' %> encontrado<%= clients.length !== 1 ? 's' : '' %>
+      </p>
+    </div>
+
+    <div class="flex items-center gap-3">
+      <!-- Búsqueda -->
+      <form action="/admin/clients" method="GET" class="w-full sm:w-auto">
+        <div class="flex items-center gap-2">
+          <input
+            type="text"
+            name="search"
+            value="<%= typeof search !== 'undefined' ? search : '' %>"
+            placeholder="Nombre, cédula o teléfono..."
+            class="w-full sm:w-72 px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600
+                   bg-white dark:bg-gray-800 text-sm text-gray-700 dark:text-gray-200
+                   focus:ring-2 focus:ring-brand-green focus:outline-none transition"
+          />
+          <button type="submit"
+            class="px-4 py-2 rounded-lg bg-brand-green text-white text-sm font-semibold
+                   shadow-sm hover:bg-green-500 transition-colors whitespace-nowrap">
+            🔍 Buscar
+          </button>
+          <% if (typeof search !== 'undefined' && search) { %>
+            <a href="/admin/clients"
+              class="px-3 py-2 rounded-lg border border-gray-300 text-sm text-gray-600
+                     hover:bg-gray-100 transition-colors">
+              ✕
+            </a>
+          <% } %>
+        </div>
+      </form>
+
+      <!-- Botón Nuevo Cliente -->
+      <a href="/admin/clients/new"
+         class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-brand-navy text-white
+                text-sm font-semibold shadow-sm hover:bg-blue-800 transition-colors whitespace-nowrap">
+        ➕ Nuevo Cliente
+      </a>
+    </div>
+  </div>
+
+  <!-- Tabla -->
+  <div class="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm overflow-x-auto">
+    <table class="min-w-full text-sm">
+      <thead class="bg-gray-50 dark:bg-gray-800">
+        <tr>
+          <th class="px-4 py-3 text-left font-semibold text-gray-700 dark:text-gray-200">Cliente</th>
+          <th class="px-4 py-3 text-left font-semibold text-gray-700 dark:text-gray-200">Documento</th>
+          <th class="px-4 py-3 text-left font-semibold text-gray-700 dark:text-gray-200">Teléfono</th>
+          <th class="px-4 py-3 text-left font-semibold text-gray-700 dark:text-gray-200">Dirección</th>
+          <th class="px-4 py-3 text-left font-semibold text-gray-700 dark:text-gray-200">Préstamos</th>
+          <th class="px-4 py-3 text-left font-semibold text-gray-700 dark:text-gray-200">Estado</th>
+          <th class="px-4 py-3 text-left font-semibold text-gray-700 dark:text-gray-200">Acciones</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% if (clients.length === 0) { %>
+          <tr>
+            <td colspan="7" class="px-4 py-10 text-center text-gray-400 dark:text-gray-500">
+              <span class="text-4xl block mb-3">👥</span>
+              <p class="font-medium">No se encontraron clientes</p>
+              <% if (typeof search !== 'undefined' && search) { %>
+                <p class="text-xs mt-1">Intenta con otro término de búsqueda</p>
+              <% } %>
+            </td>
+          </tr>
+        <% } else { %>
+          <% clients.forEach(client => { %>
+            <tr class="border-t border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+              <td class="px-4 py-3">
+                <a href="/admin/clients/<%= client.id %>/edit"
+                  class="font-medium text-brand-navy dark:text-brand-green hover:underline">
+                  <%= client.firstName %> <%= client.lastName %>
+                </a>
+                <% if (client.businessName) { %>
+                  <p class="text-xs text-gray-400 mt-0.5"><%= client.businessName %></p>
+                <% } %>
+              </td>
+              <td class="px-4 py-3 text-gray-600 dark:text-gray-300">
+                <span class="text-xs text-gray-400"><%= client.documentType %></span>
+                <%= client.documentNumber %>
+              </td>
+              <td class="px-4 py-3 text-gray-600 dark:text-gray-300">
+                <%= client.phone || '—' %>
+              </td>
+              <td class="px-4 py-3 text-gray-600 dark:text-gray-300 max-w-[180px] truncate">
+                <%= client.address || '—' %>
+              </td>
+              <td class="px-4 py-3">
+                <span class="inline-flex items-center justify-center w-7 h-7 rounded-full
+                  text-xs font-bold
+                  <%= client._count.loans > 0 ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-500' %>">
+                  <%= client._count.loans %>
+                </span>
+              </td>
+              <td class="px-4 py-3">
+                <% if (client.isActive) { %>
+                  <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-green-100 text-green-700">
+                    ● Activo
+                  </span>
+                <% } else { %>
+                  <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-red-100 text-red-700">
+                    ● Restringido
+                  </span>
+                <% } %>
+              </td>
+              <td class="px-4 py-3">
+                <a href="/admin/clients/<%= client.id %>/edit"
+                  class="text-brand-green hover:underline text-sm font-medium">
+                  ✏️ Editar
+                </a>
+              </td>
+            </tr>
+          <% }); %>
+        <% } %>
+      </tbody>
+    </table>
+  </div>
+
+</div>
+
+<%- include('../../layouts/footer') %>

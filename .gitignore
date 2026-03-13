@@ -1,0 +1,39 @@
+# Dependencias
+node_modules/
+
+# Variables de entorno
+.env
+.env.local
+.env.*.local
+
+# Build de Tailwind (se genera con build:css)
+public/css/styles.css
+
+# Prisma
+prisma/migrations/**/migration_lock.toml
+
+# Logs
+logs/
+!logs/.gitkeep
+*.log
+npm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.github/
+.vscode/
+
+# Coverage
+coverage/
+
+# Temporal
+tmp/
+temp/
+
+# Uploads (PDFs generados)
+uploads/
+!uploads/.gitkeep

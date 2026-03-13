@@ -1,0 +1,154 @@
+<%
+/**
+ * Formatea un valor numérico/Decimal a pesos colombianos COP.
+ * @param {number|string|null} amount
+ * @returns {string}
+ */
+function formatCOP(amount) {
+  if (amount == null) return '$0';
+  return new Intl.NumberFormat('es-CO', {
+    style: 'currency',
+    currency: 'COP',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(amount);
+}
+%>
+<%- include('../../layouts/header') %>
+
+<div class="p-4 sm:p-6 lg:p-8 space-y-6">
+
+  <!-- Encabezado de página -->
+  <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+    <div>
+      <h1 class="text-2xl font-bold text-brand-navy">Cobradores</h1>
+      <p class="text-sm text-gray-500 mt-1">
+        <%= collectors.length %> cobrador<%= collectors.length !== 1 ? 'es' : '' %> registrado<%= collectors.length !== 1 ? 's' : '' %>
+        &nbsp;·&nbsp; Rendimiento al día de hoy
+      </p>
+    </div>
+    <a href="/admin/collectors/new"
+      class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-brand-green text-white
+             text-sm font-semibold shadow-sm hover:bg-green-500 transition-colors whitespace-nowrap">
+      + Añadir Cobrador
+    </a>
+  </div>
+
+  <!-- Estado vacío -->
+  <% if (collectors.length === 0) { %>
+    <div class="bg-white rounded-xl border border-gray-200 shadow-sm py-20 text-center">
+      <span class="text-5xl block mb-4">🧑‍💼</span>
+      <p class="text-base font-semibold text-gray-600">No hay cobradores registrados</p>
+      <p class="text-sm text-gray-400 mt-1">Crea el primer cobrador para comenzar a asignar rutas.</p>
+      <a href="/admin/collectors/new"
+        class="mt-5 inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-brand-green
+               text-white text-sm font-semibold hover:bg-green-500 transition-colors">
+        + Añadir Cobrador
+      </a>
+    </div>
+
+  <% } else { %>
+
+    <!-- Grid de tarjetas -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+
+      <% collectors.forEach(collector => { %>
+        <%
+          /* Sumar totalReceived de todos los pagos de hoy */
+          const todayTotal = collector.payments.reduce((sum, p) => {
+            return sum + parseFloat(p.totalReceived || 0);
+          }, 0);
+          const todayCount = collector.payments.length;
+        %>
+        <div class="bg-white rounded-xl border border-gray-200 shadow-sm flex flex-col
+                    transition-shadow hover:shadow-md">
+
+          <!-- Cabecera de tarjeta -->
+          <div class="flex items-start justify-between px-5 pt-5 pb-4
+                      border-b border-gray-100">
+            <div class="flex items-center gap-3">
+              <!-- Avatar inicial -->
+              <div class="w-11 h-11 rounded-full bg-brand-navy flex items-center
+                          justify-center text-white text-lg font-bold shrink-0">
+                <%= collector.firstName.charAt(0).toUpperCase() %><%= collector.lastName.charAt(0).toUpperCase() %>
+              </div>
+              <div>
+                <p class="text-sm font-bold text-brand-navy leading-tight">
+                  <%= collector.firstName %> <%= collector.lastName %>
+                </p>
+                <p class="text-xs text-gray-400 mt-0.5">
+                  <%= collector.phone || collector.email %>
+                </p>
+              </div>
+            </div>
+
+            <!-- Badge de estado -->
+            <% if (collector.isActive) { %>
+              <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full
+                           text-xs font-semibold bg-green-100 text-green-700 shrink-0">
+                ● Activo
+              </span>
+            <% } else { %>
+              <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full
+                           text-xs font-semibold bg-gray-100 text-gray-500 shrink-0">
+                ● Inactivo
+              </span>
+            <% } %>
+          </div>
+
+          <!-- Cuerpo de tarjeta -->
+          <div class="px-5 py-4 space-y-4 flex-1">
+
+            <!-- Rendimiento del día -->
+            <div class="rounded-lg bg-brand-green/10 border border-brand-green/20 px-4 py-3">
+              <p class="text-xs font-semibold text-brand-green uppercase tracking-wide mb-1">
+                💰 Recaudado hoy
+              </p>
+              <p class="text-2xl font-bold text-brand-navy leading-none">
+                <%= formatCOP(todayTotal) %>
+              </p>
+              <p class="text-xs text-gray-500 mt-1">
+                <%= todayCount %> pago<%= todayCount !== 1 ? 's' : '' %> registrado<%= todayCount !== 1 ? 's' : '' %>
+              </p>
+            </div>
+
+            <!-- Rutas asignadas -->
+            <div>
+              <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
+                🗺️ Rutas asignadas
+              </p>
+              <% if (collector.routes.length === 0) { %>
+                <p class="text-xs text-gray-400 italic">Sin rutas asignadas</p>
+              <% } else { %>
+                <div class="flex flex-wrap gap-1.5">
+                  <% collector.routes.forEach(route => { %>
+                    <span class="inline-flex items-center px-2 py-0.5 rounded-full
+                                 text-xs font-medium bg-blue-50 text-blue-700 border border-blue-100">
+                      <%= route.name %>
+                    </span>
+                  <% }); %>
+                </div>
+              <% } %>
+            </div>
+
+          </div>
+
+          <!-- Pie de tarjeta: acción principal -->
+          <div class="px-5 pb-5">
+            <a href="/admin/collectors/<%= collector.id %>"
+              class="flex items-center justify-center gap-2 w-full px-4 py-2.5 rounded-lg
+                     border-2 border-brand-green text-brand-green text-sm font-semibold
+                     hover:bg-brand-green hover:text-white transition-colors">
+              📍 Ver Mapa y Detalle
+            </a>
+          </div>
+
+        </div>
+      <% }); %>
+
+    </div>
+  <% } %>
+
+</div>
+
+<%- include('../../layouts/footer') %>

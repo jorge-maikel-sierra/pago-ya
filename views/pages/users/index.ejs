@@ -1,0 +1,250 @@
+<%
+/**
+ * Vista: users/index.ejs
+ * Lista de usuarios de la organización.
+ *
+ * Variables locales esperadas:
+ * - users: Array de usuarios
+ * - search: String de búsqueda actual
+ * - user: Usuario autenticado
+ * - flashSucess, flashError: Mensajes flash opcionales
+ */
+
+/**
+ * Formatea una fecha a formato colombiano.
+ * @param {Date|string} date
+ * @returns {string}
+ */
+function formatDate(date) {
+  if (!date) return '—';
+  return new Date(date).toLocaleDateString('es-CO', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    timeZone: 'UTC',
+  });
+}
+
+/**
+ * Retorna clases y label para el badge del rol.
+ * @param {string} role
+ * @returns {{ bg: string, text: string, label: string }}
+ */
+function roleBadge(role) {
+  const map = {
+    SUPER_ADMIN: { bg: 'bg-purple-100', text: 'text-purple-700', label: 'Super Admin' },
+    ADMIN:       { bg: 'bg-blue-100',   text: 'text-blue-700',   label: 'Administrador' },
+    COLLECTOR:   { bg: 'bg-green-100',  text: 'text-green-700',  label: 'Cobrador' },
+  };
+  return map[role] || { bg: 'bg-gray-100', text: 'text-gray-600', label: role };
+}
+%>
+<%- include('../../layouts/header') %>
+
+<div class="p-4 sm:p-6 lg:p-8 space-y-6">
+
+  <!-- =========================================
+       MENSAJES FLASH
+  ========================================= -->
+  <% if (typeof flashSucess !== 'undefined' && flashSucess) { %>
+    <div class="rounded-lg bg-green-50 border border-green-200 p-4" role="alert">
+      <div class="flex items-center gap-2">
+        <span class="text-green-600 text-lg">✅</span>
+        <p class="text-sm font-medium text-green-800"><%= flashSucess %></p>
+      </div>
+    </div>
+  <% } %>
+
+  <% if (typeof flashError !== 'undefined' && flashError) { %>
+    <div class="rounded-lg bg-red-50 border border-red-200 p-4" role="alert">
+      <div class="flex items-center gap-2">
+        <span class="text-red-600 text-lg">❌</span>
+        <p class="text-sm font-medium text-red-800"><%= flashError %></p>
+      </div>
+    </div>
+  <% } %>
+
+  <!-- =========================================
+       ENCABEZADO Y BARRA DE ACCIÓN
+  ========================================= -->
+  <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+    <div>
+      <h1 class="text-2xl font-bold text-brand-navy">Gestión de Usuarios</h1>
+      <p class="text-sm text-gray-500 mt-1">
+        <span class="font-medium text-brand-navy"><%= users.length %></span>
+        usuario<%= users.length !== 1 ? 's' : '' %> en tu organización
+      </p>
+    </div>
+
+    <div class="flex flex-col sm:flex-row gap-3">
+      <!-- Búsqueda -->
+      <form method="GET" action="/admin/users" class="flex gap-2">
+        <input
+          type="text"
+          name="search"
+          value="<%= search %>"
+          placeholder="Buscar por nombre o email..."
+          class="w-full sm:w-64 px-4 py-2.5 rounded-lg border border-gray-300
+                 text-sm text-gray-700 placeholder-gray-400
+                 focus:ring-2 focus:ring-brand-green focus:border-brand-green focus:outline-none
+                 transition"
+        />
+        <button type="submit"
+                class="px-4 py-2.5 rounded-lg bg-brand-navy text-white text-sm font-semibold
+                       hover:bg-blue-900 transition">
+          🔍
+        </button>
+        <% if (search) { %>
+          <a href="/admin/users"
+             class="px-4 py-2.5 rounded-lg border border-gray-300 text-gray-500 text-sm
+                    hover:bg-gray-50 transition flex items-center">
+            ✕
+          </a>
+        <% } %>
+      </form>
+
+      <!-- Botón Nuevo -->
+      <a href="/admin/users/new"
+         class="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg
+                bg-brand-green text-white text-sm font-semibold shadow-sm
+                hover:bg-green-500 transition-colors">
+        ➕ Nuevo Usuario
+      </a>
+    </div>
+  </div>
+
+  <!-- =========================================
+       TABLA DE USUARIOS
+  ========================================= -->
+  <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+
+    <% if (users.length === 0) { %>
+      <!-- Estado vacío -->
+      <div class="py-16 text-center">
+        <span class="text-5xl block mb-4">👤</span>
+        <p class="text-base font-medium text-gray-500">
+          <% if (search) { %>
+            No se encontraron usuarios para "<%= search %>"
+          <% } else { %>
+            No hay usuarios registrados
+          <% } %>
+        </p>
+        <a href="/admin/users/new"
+           class="mt-4 inline-flex items-center gap-1 px-4 py-2 rounded-lg bg-brand-green text-white
+                  text-sm font-semibold hover:bg-green-500 transition-colors">
+          ➕ Crear Primer Usuario
+        </a>
+      </div>
+
+    <% } else { %>
+
+      <!-- Tabla responsiva -->
+      <div class="overflow-x-auto">
+        <table class="min-w-full divide-y divide-gray-200 text-sm">
+          <thead class="bg-gray-50">
+            <tr>
+              <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                Nombre
+              </th>
+              <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                Email
+              </th>
+              <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                Teléfono
+              </th>
+              <th class="px-4 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                Rol
+              </th>
+              <th class="px-4 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                Estado
+              </th>
+              <th class="px-4 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                Último Acceso
+              </th>
+              <th class="px-4 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                Acciones
+              </th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-gray-100">
+            <% users.forEach(function(u) { %>
+              <% const badge = roleBadge(u.role); %>
+              <tr class="hover:bg-gray-50 transition-colors">
+
+                <!-- Nombre -->
+                <td class="px-4 py-4">
+                  <div class="flex items-center gap-3">
+                    <div class="w-9 h-9 rounded-full bg-brand-green/20 flex items-center justify-center">
+                      <span class="text-sm font-bold text-brand-green">
+                        <%= u.firstName.charAt(0) %><%= u.lastName.charAt(0) %>
+                      </span>
+                    </div>
+                    <span class="font-medium text-brand-navy">
+                      <%= u.firstName %> <%= u.lastName %>
+                    </span>
+                  </div>
+                </td>
+
+                <!-- Email -->
+                <td class="px-4 py-4 text-gray-600">
+                  <%= u.email %>
+                </td>
+
+                <!-- Teléfono -->
+                <td class="px-4 py-4 text-gray-600">
+                  <%= u.phone || '—' %>
+                </td>
+
+                <!-- Rol -->
+                <td class="px-4 py-4 text-center">
+                  <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold
+                               <%= badge.bg %> <%= badge.text %>">
+                    <%= badge.label %>
+                  </span>
+                </td>
+
+                <!-- Estado -->
+                <td class="px-4 py-4 text-center">
+                  <% if (u.isActive) { %>
+                    <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold
+                                 bg-green-100 text-green-700">
+                      Activo
+                    </span>
+                  <% } else { %>
+                    <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold
+                                 bg-red-100 text-red-700">
+                      Inactivo
+                    </span>
+                  <% } %>
+                </td>
+
+                <!-- Último Acceso -->
+                <td class="px-4 py-4 text-center text-gray-500 text-xs">
+                  <%= u.lastLoginAt ? formatDate(u.lastLoginAt) : 'Nunca' %>
+                </td>
+
+                <!-- Acciones -->
+                <td class="px-4 py-4">
+                  <div class="flex items-center justify-center gap-2">
+                    <a href="/admin/users/<%= u.id %>/edit"
+                       title="Editar"
+                       class="inline-flex items-center justify-center w-8 h-8 rounded-lg
+                              bg-blue-100 text-blue-600 hover:bg-blue-200 transition-colors">
+                      ✏️
+                    </a>
+                  </div>
+                </td>
+
+              </tr>
+            <% }); %>
+          </tbody>
+        </table>
+      </div>
+
+    <% } %>
+
+  </div>
+
+</div>
+
+<%- include('../../layouts/footer') %>

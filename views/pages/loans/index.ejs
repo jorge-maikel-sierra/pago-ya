@@ -1,0 +1,87 @@
+<%- include('../../layouts/header') %>
+
+<div class="p-4 sm:p-6 lg:p-8 space-y-6">
+
+  <!-- Encabezado de página -->
+  <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+    <div>
+      <h1 class="text-2xl font-bold text-brand-navy">Gestión de Préstamos</h1>
+      <p class="text-sm text-gray-500 mt-1">
+        <% if (loans.length === 0) { %>
+          No se encontraron préstamos
+        <% } else { %>
+          <%= loans.length %> préstamo<%= loans.length !== 1 ? 's' : '' %> encontrado<%= loans.length !== 1 ? 's' : '' %>
+        <% } %>
+      </p>
+    </div>
+    <a href="/admin/loans/new"
+       class="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-brand-green text-white text-sm font-semibold shadow-sm hover:bg-green-500 transition-colors">
+      ➕ Nuevo Préstamo
+    </a>
+  </div>
+
+  <!-- Filtros -->
+  <form method="GET" action="/admin/loans"
+        class="bg-white rounded-xl border border-gray-200 shadow-sm p-4">
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+
+      <!-- Búsqueda por cliente -->
+      <div>
+        <label for="search" class="block text-xs font-medium text-gray-600 mb-1">
+          Buscar cliente
+        </label>
+        <input
+          id="search"
+          type="text"
+          name="search"
+          value="<%= typeof search !== 'undefined' && search ? search : '' %>"
+          placeholder="Nombre o apellido..."
+          class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm
+                 focus:outline-none focus:ring-2 focus:ring-brand-green focus:border-brand-green
+                 placeholder-gray-400"
+        />
+      </div>
+
+      <!-- Filtro por estado -->
+      <div>
+        <label for="status" class="block text-xs font-medium text-gray-600 mb-1">
+          Estado
+        </label>
+        <select
+          id="status"
+          name="status"
+          class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm
+                 focus:outline-none focus:ring-2 focus:ring-brand-green focus:border-brand-green
+                 bg-white"
+        >
+          <option value="">Todos los estados</option>
+          <option value="ACTIVE"     <%= (typeof status !== 'undefined' && status === 'ACTIVE')     ? 'selected' : '' %>>Activo</option>
+          <option value="PENDING"    <%= (typeof status !== 'undefined' && status === 'PENDING')    ? 'selected' : '' %>>Pendiente</option>
+          <option value="COMPLETED"  <%= (typeof status !== 'undefined' && status === 'COMPLETED')  ? 'selected' : '' %>>Completado</option>
+          <option value="DEFAULTED"  <%= (typeof status !== 'undefined' && status === 'DEFAULTED')  ? 'selected' : '' %>>En mora</option>
+          <option value="CANCELLED"  <%= (typeof status !== 'undefined' && status === 'CANCELLED')  ? 'selected' : '' %>>Cancelado</option>
+        </select>
+      </div>
+
+      <!-- Botones de acción -->
+      <div class="flex items-end gap-2">
+        <button type="submit"
+                class="flex-1 inline-flex items-center justify-center gap-1 px-4 py-2 rounded-lg
+                       bg-brand-navy text-white text-sm font-semibold hover:bg-opacity-90 transition-colors">
+          🔍 Filtrar
+        </button>
+        <a href="/admin/loans"
+           class="flex-1 inline-flex items-center justify-center gap-1 px-4 py-2 rounded-lg
+                  border border-gray-300 text-gray-600 text-sm font-medium hover:bg-gray-50 transition-colors">
+          ✖ Limpiar
+        </a>
+      </div>
+    </div>
+  </form>
+
+  <!-- Tabla de préstamos -->
+  <%- include('../../partials/_loan-table', { loans: loans }) %>
+
+</div>
+
+<%- include('../../layouts/footer') %>

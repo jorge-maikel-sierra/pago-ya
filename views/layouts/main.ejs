@@ -1,0 +1,16 @@
+<%#
+  Layout principal del Panel de Administración.
+  Uso: Las vistas en pages/ deben incluir header.ejs y footer.ejs.
+
+  Ejemplo de una página:
+    <%- include('../layouts/header') %>
+    <!-- contenido de la página -->
+    <%- include('../layouts/footer') %>
+
+  Variables esperadas del controlador:
+    - title {string}   Título de la página
+    - user  {object}   Usuario autenticado (req.user)
+    - currentPath {string} Ruta activa para el sidebar
+    - flashSucess {string?} Mensaje de éxito
+    - flashError {string?}   Mensaje de error
+%>

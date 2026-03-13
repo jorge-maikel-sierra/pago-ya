@@ -1,0 +1,22 @@
+    </main>
+  </div>
+
+  <!-- Socket.io (para actualizaciones en tiempo real) -->
+  <script src="/socket.io/socket.io.js" defer></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      if (typeof io !== 'undefined') {
+        const socket = io();
+        socket.on('payment:created', () => {
+          const badge = document.getElementById('live-payments-badge');
+          if (badge) {
+            const current = parseInt(badge.textContent, 10) || 0;
+            badge.textContent = current + 1;
+            badge.classList.remove('hidden');
+          }
+        });
+      }
+    });
+  </script>
+</body>
+</html>
