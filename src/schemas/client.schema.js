@@ -98,13 +98,16 @@ const createClientSchema = z.object({
 
     routeId: z.string().uuid('routeId debe ser un UUID válido').optional().or(z.literal('')),
 
-    isActive: z
-      .union([z.boolean(), z.string(), z.undefined()])
-      .optional()
-      .transform((val) => {
-        if (val === undefined) return true; // default para crear
-        return val === true || val === 'true' || val === 'on';
-      }),
+    isActive: z.preprocess(
+      (val) => (Array.isArray(val) ? val[val.length - 1] : val),
+      z
+        .union([z.boolean(), z.string(), z.undefined()])
+        .optional()
+        .transform((val) => {
+          if (val === undefined) return true; // default para crear
+          return val === true || val === 'true' || val === 'on';
+        }),
+    ),
   }),
 });
 

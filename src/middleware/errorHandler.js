@@ -9,6 +9,10 @@ const PRISMA_ERROR_MAP = Object.freeze({
     statusCode: 409,
     message: 'El registro ya existe (valor duplicado)',
   },
+  P2021: {
+    statusCode: 500,
+    message: 'La estructura de la base de datos no coincide con el esquema. Ejecuta las migraciones pendientes.',
+  },
   P2025: {
     statusCode: 404,
     message: 'Registro no encontrado',

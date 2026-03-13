@@ -1,6 +1,7 @@
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import express from 'express';
+import ejs from 'ejs';
 import helmet from 'helmet';
 import cors from 'cors';
 import compression from 'compression';
@@ -98,6 +99,56 @@ app.use(
 app.set('view engine', 'ejs');
 app.set('views', join(__dirname, '..', 'views'));
 app.set('view cache', false); // Deshabilitar cache en desarrollo
+
+// Re-registrar engine EJS con guardia para detectar/limpiar `include` en data
+const originalRenderFile = ejs.renderFile;
+ejs.renderFile = function ejsGuardedRenderFile(...args) {
+  // args: [path, data, options?, cb?] como Express los envía
+  const path = args[0];
+  const data = args[1] || {};
+  const optsIndex = args.length === 4 ? 2 : typeof args[2] === 'object' ? 2 : null;
+  if (optsIndex !== null) {
+    args[optsIndex] = args[optsIndex] || {};
+    if (typeof args[optsIndex].legacyInclude === 'undefined') args[optsIndex].legacyInclude = true;
+    if (typeof args[optsIndex].client === 'undefined') args[optsIndex].client = false;
+  } else {
+    // No options provided: inject one to force legacyInclude
+    args.splice(2, 0, { legacyInclude: true, client: false });
+  }
+  const hasInclude = Object.prototype.hasOwnProperty.call(data, 'include') || 'include' in data;
+
+  if (hasInclude) {
+    delete data.include;
+  }
+
+  return originalRenderFile.apply(ejs, args);
+};
+app.engine('ejs', ejs.renderFile);
+
+// Evita que algún dato en locals/opts sobrescriba la función `include` de EJS.
+// Si existe una clave `include` en res.locals o en las opciones de render,
+// EJS pierde su helper y las vistas fallan con "include is not a function".
+app.use((req, res, next) => {
+  const originalRender = res.render.bind(res);
+
+  res.render = (view, options = {}, callback) => {
+    const hadLocalsInclude =
+      Object.prototype.hasOwnProperty.call(res.locals, 'include') || 'include' in res.locals;
+    const hadOptionsInclude =
+      options && (Object.prototype.hasOwnProperty.call(options, 'include') || 'include' in options);
+
+    if (hadLocalsInclude) {
+      delete res.locals.include;
+    }
+    if (hadOptionsInclude) {
+      // eslint-disable-next-line no-param-reassign
+      delete options.include;
+    }
+    return originalRender(view, options, callback);
+  };
+
+  next();
+});
 
 // ============================================
 // RUTAS
