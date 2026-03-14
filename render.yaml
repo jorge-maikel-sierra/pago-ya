@@ -10,6 +10,8 @@
 #   → DATABASE_URL se ingresa manualmente desde console.prisma.io
 #
 # Redis: desactivado — se activará cuando se migre a un plan de pago.
+# Nota: preDeployCommand no está disponible en plan free — las migraciones
+#       se ejecutan como parte del buildCommand.
 # =============================================================================
 
 services:
@@ -25,11 +27,10 @@ services:
     autoDeployTrigger: commit   # Auto-deploy en cada push a main
 
     # --- Build & Start -------------------------------------------------------
-    buildCommand: npm install && npm run build:css && npm run db:generate
+    # Las migraciones se ejecutan en el build porque preDeployCommand
+    # no está disponible en el plan gratuito de Render.
+    buildCommand: npm install && npm run db:generate && npm run db:migrate:prod && npm run build:css
     startCommand: npm start
-
-    # Pre-deploy: migraciones de base de datos (zero-downtime)
-    preDeployCommand: npm run db:migrate:prod
 
     # --- Health Check --------------------------------------------------------
     healthCheckPath: /api/health
