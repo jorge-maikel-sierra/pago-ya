@@ -24,9 +24,9 @@ RUN apt-get update -qq && \
 COPY package-lock.json package.json ./
 RUN npm ci
 
-# Generate Prisma Client
+# Generate Prisma Client with Accelerate support
 COPY prisma .
-RUN npx prisma generate
+RUN npx prisma generate --accelerate
 
 # Copy application code
 COPY . .
@@ -44,5 +44,5 @@ RUN apt-get update -qq && \
 COPY --from=build /app /app
 
 # Start the server by default, this can be overwritten at runtime
-EXPOSE 3000
+EXPOSE 8080
 CMD [ "npm", "run", "start" ]
