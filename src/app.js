@@ -176,6 +176,11 @@ app.get('/api/health', (req, res) => {
   });
 });
 
+// Database health check
+import { getDatabaseHealth, getUsersHealth } from './controllers/health.controller.js';
+app.get('/api/health/db', getDatabaseHealth);
+app.get('/api/health/users', getUsersHealth);
+
 // TODO: Registrar rutas del módulo aquí
 // app.use('/api/auth', authRoutes);
 // app.use('/api/loans', loanRoutes);

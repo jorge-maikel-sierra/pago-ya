@@ -43,6 +43,12 @@ const getLogin = (req, res) => {
 const postLogin = asyncHandler(async (req, res) => {
   const { email, password } = req.body;
 
+  // Validación de campos requeridos
+  if (!email || !password) {
+    req.session.flashError = 'Email y contraseña son requeridos';
+    return res.redirect('/admin/login');
+  }
+
   const { default: prisma } = await import('../config/prisma.js');
   const { default: bcrypt } = await import('bcrypt');
 

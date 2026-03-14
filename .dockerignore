@@ -45,7 +45,7 @@ jest.config.js
 Thumbs.db
 
 # Build artifacts (se regeneran en el deploy)
-public/css/styles.css
+# public/css/styles.css - Necesario para producción
 uploads/
 
 # Documentación

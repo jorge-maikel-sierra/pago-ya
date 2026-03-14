@@ -1,5 +1,7 @@
 import asyncHandler from '../utils/asyncHandler.js';
 import * as authService from '../services/auth.service.js';
+import { registerSchema } from '../schemas/auth.schema.js';
+
 /**
  * GET /register
  * Renderiza el formulario de registro.
@@ -24,22 +26,45 @@ export const getRegister = (req, res) => {
  * contraseña y redirige al login.
  */
 export const postRegister = asyncHandler(async (req, res) => {
-  const { firstName, lastName, email, password } = req.body;
-
-  // Validación mínima en servidor
-  if (!firstName || !email || !password) {
-    req.session.flashError = 'Por favor completa nombre, correo y contraseña.';
-    return res.redirect('/register');
-  }
+  console.log('[Registration] Inicio de proceso de registro:', { 
+    email: req.body.email,
+    firstName: req.body.firstName,
+    hasPassword: !!req.body.password
+  });
 
   try {
-    await authService.registerOrganizationAndUser({ firstName, lastName, email, password });
+    // Validación con schema de Zod
+    const validatedData = registerSchema.parse(req.body);
+    console.log('[Registration] Datos validados correctamente');
+
+    const result = await authService.registerOrganizationAndUser(validatedData);
+    
+    console.log('[Registration] Usuario creado exitosamente:', {
+      userId: result.user.id,
+      email: result.user.email,
+      organizationId: result.organization.id
+    });
+
+    req.session.flashSucess = 'Cuenta creada correctamente. Puedes iniciar sesión.';
+    return res.redirect('/admin/login');
+
   } catch (err) {
-    // Servicio lanza error con statusCode cuando el email ya existe
-    req.session.flashError = err.message || 'Error al crear la cuenta';
+    console.error('[Registration] Error en registro:', {
+      message: err.message,
+      code: err.code,
+      name: err.name,
+      stack: process.env.NODE_ENV === 'development' ? err.stack : undefined
+    });
+
+    // Manejar errores de validación de Zod
+    if (err.name === 'ZodError') {
+      const firstError = err.errors[0];
+      req.session.flashError = firstError.message;
+      return res.redirect('/register');
+    }
+
+    // Manejar otros errores del servicio
+    req.session.flashError = err.message || 'Error al crear la cuenta. Inténtalo de nuevo.';
     return res.redirect('/register');
   }
-
-  req.session.flashSucess = 'Cuenta creada correctamente. Puedes iniciar sesión.';
-  return res.redirect('/admin/login');
 });
