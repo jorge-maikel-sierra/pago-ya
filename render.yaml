@@ -4,19 +4,22 @@
 # Docs: https://render.com/docs/blueprint-spec
 #
 # Servicios definidos:
-#   1. pago-ya-web      → Web Service  (Express + Node.js 20)
-#   2. pago-ya-redis    → Key Value    (Redis/Valkey — sesiones + BullMQ)
-#   3. pago-ya-db       → PostgreSQL   (base de datos principal)
+#   1. pago-ya-web  → Web Service (Express + Node.js 20) — plan free
+#
+# Base de datos: Prisma Postgres (capa gratuita)
+#   → DATABASE_URL se ingresa manualmente desde console.prisma.io
+#
+# Redis: desactivado — se activará cuando se migre a un plan de pago.
 # =============================================================================
 
 services:
   # ---------------------------------------------------------------------------
-  # 1. Web Service — Aplicación Express
+  # Web Service — Aplicación Express
   # ---------------------------------------------------------------------------
   - type: web
     name: pago-ya-web
     runtime: node
-    plan: starter           # Cambiar a "standard" en producción real
+    plan: free
     region: oregon
     branch: main
     autoDeployTrigger: commit   # Auto-deploy en cada push a main
@@ -31,32 +34,19 @@ services:
     # --- Health Check --------------------------------------------------------
     healthCheckPath: /api/health
 
-    # --- Graceful shutdown (workers BullMQ necesitan tiempo extra) -----------
-    maxShutdownDelaySeconds: 60
-
     # --- Variables de entorno ------------------------------------------------
     envVars:
-      # Inyectadas automáticamente por Render
       - key: NODE_ENV
         value: production
 
-      # Base de datos — referencia al servicio PostgreSQL declarado abajo
+      # Prisma Postgres — copiar la connection string desde console.prisma.io
+      # No incluir aquí el valor real; ingresarlo en el dashboard de Render.
       - key: DATABASE_URL
-        fromDatabase:
-          name: pago-ya-db
-          property: connectionString
+        sync: false
 
-      # Redis — referencia al servicio Key Value declarado abajo
-      - key: REDIS_URL
-        fromService:
-          name: pago-ya-redis
-          type: keyvalue
-          property: connectionString
-
-      # Secretos — Render los solicita en el dashboard durante la 1ª creación.
-      # Después deben editarse manualmente desde el panel de cada servicio.
+      # Secretos generados automáticamente por Render al crear el Blueprint
       - key: JWT_SECRET
-        generateValue: true         # Render genera un valor aleatorio seguro
+        generateValue: true
       - key: JWT_EXPIRES_IN
         value: 8h
       - key: JWT_REFRESH_SECRET
@@ -64,9 +54,9 @@ services:
       - key: SESSION_SECRET
         generateValue: true
 
-      # Telegram (añadir manualmente en el dashboard si se usa)
+      # Telegram — ingresar en el dashboard de Render si se usa
       - key: TELEGRAM_BOT_TOKEN
-        sync: false                 # Render pedirá el valor en el formulario de creación
+        sync: false
       - key: TELEGRAM_CHAT_ID
         sync: false
 
@@ -76,27 +66,6 @@ services:
       - key: DEFAULT_MORA_RATE_ANNUAL
         value: "0.12"
 
-      # CORS — URL pública del propio servicio (completar después del primer deploy)
+      # CORS — URL pública del servicio: https://pago-ya-web.onrender.com
       - key: CORS_ORIGIN
         sync: false
-
-  # ---------------------------------------------------------------------------
-  # 2. Key Value (Redis/Valkey) — Sesiones y colas BullMQ
-  # ---------------------------------------------------------------------------
-  - type: keyvalue
-    name: pago-ya-redis
-    plan: free
-    region: oregon
-    maxmemoryPolicy: noeviction    # BullMQ requiere que los jobs no se evicten
-    ipAllowList:
-      - source: 0.0.0.0/0
-        description: allow all    # La red privada de Render es suficientemente segura
-
-# -----------------------------------------------------------------------------
-# 3. PostgreSQL — Base de datos principal
-# -----------------------------------------------------------------------------
-databases:
-  - name: pago-ya-db
-    plan: free
-    region: oregon
-    postgresMajorVersion: "16"

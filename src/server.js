@@ -98,12 +98,14 @@ const shutdown = async (signal) => {
     console.error('[Server] Error desconectando Prisma:', err.message);
   }
 
-  // 5. Desconectar Redis
-  try {
-    await redisClient.quit();
-    console.log('[Server] Redis desconectado');
-  } catch (err) {
-    console.error('[Server] Error desconectando Redis:', err.message);
+  // 5. Desconectar Redis (solo si está configurado)
+  if (redisClient) {
+    try {
+      await redisClient.quit();
+      console.log('[Server] Redis desconectado');
+    } catch (err) {
+      console.error('[Server] Error desconectando Redis:', err.message);
+    }
   }
 
   process.exit(0);
@@ -126,15 +128,19 @@ const startServer = async () => {
     await prisma.$connect();
     console.log('[Server] ✓ PostgreSQL conectado');
 
-    // Conectar Redis (si no lo conectó BullMQ antes)
-    if (redisClient.status === 'wait') {
-      await redisClient.connect();
-    }
-    console.log('[Server] ✓ Redis conectado');
+    // Conectar Redis solo si está configurado
+    if (redisClient) {
+      if (redisClient.status === 'wait') {
+        await redisClient.connect();
+      }
+      console.log('[Server] ✓ Redis conectado');
 
-    // Iniciar workers de BullMQ
-    startWorkers();
-    console.log('[Server] ✓ Workers iniciados');
+      // BullMQ requiere Redis — solo iniciar workers si Redis está disponible
+      startWorkers();
+      console.log('[Server] ✓ Workers iniciados');
+    } else {
+      console.warn('[Server] Redis no configurado — workers BullMQ desactivados');
+    }
 
     // Inicializar bot de Telegram
     initTelegramBot({

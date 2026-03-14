@@ -6,7 +6,6 @@ import helmet from 'helmet';
 import cors from 'cors';
 import compression from 'compression';
 import session from 'express-session';
-import RedisStore from 'connect-redis';
 import methodOverride from 'method-override';
 import rateLimit from 'express-rate-limit';
 
@@ -75,12 +74,23 @@ app.use(
 app.use(express.static(join(__dirname, '..', 'public')));
 
 // ============================================
-// SESIONES CON REDIS
+// SESIONES
 // ============================================
+// Usa RedisStore cuando Redis está disponible.
+// Cae a MemoryStore (express-session default) en el plan gratuito sin Redis.
+// ADVERTENCIA: MemoryStore no es apto para múltiples instancias ni para
+// reinicios de servidor — migrar a RedisStore cuando se active Redis.
+
+let sessionStore;
+if (redisClient) {
+  // Importación dinámica para no cargar connect-redis si no hace falta
+  const { default: RedisStore } = await import('connect-redis');
+  sessionStore = new RedisStore({ client: redisClient });
+}
 
 app.use(
   session({
-    store: new RedisStore({ client: redisClient }),
+    store: sessionStore,   // undefined → MemoryStore automático
     secret: process.env.SESSION_SECRET,
     resave: false,
     saveUninitialized: false,
