@@ -155,6 +155,18 @@ const startServer = async () => {
       console.log(`[Server] ✓ Escuchando en http://localhost:${PORT}`);
       console.log(`[Server]   Entorno: ${process.env.NODE_ENV || 'development'}`);
     });
+
+    // Puerto ya en uso → mensaje claro en vez de excepción sin capturar
+    httpServer.on('error', (err) => {
+      if (err.code === 'EADDRINUSE') {
+        console.error(`[Server] ✗ El puerto ${PORT} ya está en uso.`);
+        console.error(`[Server]   Ejecuta: lsof -nP -iTCP:${PORT} -sTCP:LISTEN`);
+        console.error(`[Server]   Luego:   kill -9 <PID>   o usa PORT=XXXX npm run dev`);
+      } else {
+        console.error('[Server] Error de red:', err);
+      }
+      process.exit(1);
+    });
   } catch (err) {
     console.error('[Server] Error fatal al iniciar:', err);
     process.exit(1);

@@ -14,6 +14,7 @@ import errorHandler from './middleware/errorHandler.js';
 import paymentRoutes from './routes/payment.routes.js';
 import adminRoutes from './routes/admin.routes.js';
 import userRoutes from './routes/user.routes.js';
+import authRoutes from './routes/auth.routes.js';
 
 // --- Rutas de directorio (ESM no tiene __dirname) ---
 const __filename = fileURLToPath(import.meta.url);
@@ -179,6 +180,8 @@ app.get('/api/health', (req, res) => {
 // app.use('/api/auth', authRoutes);
 // app.use('/api/loans', loanRoutes);
 app.use('/admin', adminRoutes);
+// Rutas de autenticación públicas (login / register)
+app.use('/', authRoutes);
 app.use('/api/v1/payments', paymentRoutes);
 app.use('/api/v1/users', userRoutes);
 
