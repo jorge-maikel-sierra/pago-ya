@@ -5,7 +5,10 @@ import { success } from '../utils/apiResponse.js';
 import { registerPayment, batchSync } from '../services/payment.service.js';
 import { QUEUE_NAME } from '../jobs/telegramWorker.js';
 
-const telegramQueue = new Queue(QUEUE_NAME, { connection: redisClient });
+// Cola de Telegram solo disponible cuando Redis está configurado
+const telegramQueue = redisClient
+  ? new Queue(QUEUE_NAME, { connection: redisClient })
+  : null;
 
 /**
  * POST /api/v1/payments
@@ -20,22 +23,25 @@ const registerPaymentHandler = asyncHandler(async (req, res) => {
     collectorId: req.user.id,
   });
 
-  await telegramQueue.add('payment-receipt', {
-    type: 'payment-receipt',
-    data: {
-      paymentId: result.payment.id,
-      chatId: process.env.TELEGRAM_CHAT_ID,
-      clientName: result.clientName,
-      amount: result.payment.amount,
-      moraAmount: result.payment.moraAmount,
-      totalReceived: result.payment.totalReceived,
-      outstandingBalance: result.loan.outstandingBalance,
-      installmentNumber: result.loan.paidPayments,
-      totalInstallments: result.numberOfPayments,
-      collectorName: `${req.user.firstName} ${req.user.lastName}`,
-      collectedAt: result.payment.collectedAt.toISOString(),
-    },
-  });
+  // Telegram notifications are only available when Redis is configured
+  if (telegramQueue) {
+    await telegramQueue.add('payment-receipt', {
+      type: 'payment-receipt',
+      data: {
+        paymentId: result.payment.id,
+        chatId: process.env.TELEGRAM_CHAT_ID,
+        clientName: result.clientName,
+        amount: result.payment.amount,
+        moraAmount: result.payment.moraAmount,
+        totalReceived: result.payment.totalReceived,
+        outstandingBalance: result.loan.outstandingBalance,
+        installmentNumber: result.loan.paidPayments,
+        totalInstallments: result.numberOfPayments,
+        collectorName: `${req.user.firstName} ${req.user.lastName}`,
+        collectedAt: result.payment.collectedAt.toISOString(),
+      },
+    });
+  }
 
   const io = req.app.get('io');
   if (io) {
@@ -80,25 +86,28 @@ const batchSyncHandler = asyncHandler(async (req, res) => {
 
   const synced = results.filter((r) => r.status === 'synced');
 
-  await Promise.all(
-    synced.map((item) =>
-      telegramQueue.add('payment-receipt-batch', {
-        type: 'payment-receipt',
-        data: {
-          paymentId: item.paymentId,
-          chatId: process.env.TELEGRAM_CHAT_ID,
-          clientName: 'Cliente',
-          amount: '0',
-          moraAmount: '0',
-          totalReceived: '0',
-          outstandingBalance: '0',
-          installmentNumber: 0,
-          totalInstallments: 0,
-          collectorName: `${req.user.firstName} ${req.user.lastName}`,
-        },
-      }),
-    ),
-  );
+  // Telegram notifications are only available when Redis is configured
+  if (telegramQueue) {
+    await Promise.all(
+      synced.map((item) =>
+        telegramQueue.add('payment-receipt-batch', {
+          type: 'payment-receipt',
+          data: {
+            paymentId: item.paymentId,
+            chatId: process.env.TELEGRAM_CHAT_ID,
+            clientName: 'Cliente',
+            amount: '0',
+            moraAmount: '0',
+            totalReceived: '0',
+            outstandingBalance: '0',
+            installmentNumber: 0,
+            totalInstallments: 0,
+            collectorName: `${req.user.firstName} ${req.user.lastName}`,
+          },
+        }),
+      ),
+    );
+  }
 
   const io = req.app.get('io');
   if (io && synced.length > 0) {

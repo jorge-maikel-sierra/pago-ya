@@ -8,8 +8,10 @@ import { createLoanSchema } from '../schemas/loan.schema.js';
 import redisClient from '../config/redis.js';
 import { QUEUE_NAME } from '../jobs/telegramWorker.js';
 
-// Cola de Telegram para notificaciones de recibos
-const telegramQueue = new Queue(QUEUE_NAME, { connection: redisClient });
+// Cola de Telegram solo disponible cuando Redis está configurado
+const telegramQueue = redisClient
+  ? new Queue(QUEUE_NAME, { connection: redisClient })
+  : null;
 
 /**
  * GET /admin/login
@@ -1933,23 +1935,25 @@ const createPayment = asyncHandler(async (req, res) => {
     return { payment, loan: updatedLoan, client: loan.client };
   });
 
-  // 6. Encolar notificación de Telegram
-  await telegramQueue.add('send-receipt', {
-    type: 'payment-receipt',
-    data: {
-      paymentId: result.payment.id,
-      chatId: process.env.TELEGRAM_CHAT_ID,
-      clientName: `${result.client.firstName} ${result.client.lastName}`,
-      amount: result.payment.amount,
-      moraAmount: result.payment.moraAmount,
-      totalReceived: result.payment.totalReceived,
-      outstandingBalance: result.loan.outstandingBalance,
-      paidPayments: result.loan.paidPayments,
-      totalInstallments: result.loan.numberOfPayments,
-      collectorName: `${req.user.firstName} ${req.user.lastName}`,
-      collectedAt: result.payment.collectedAt.toISOString(),
-    },
-  });
+  // 6. Encolar notificación de Telegram (sólo si Redis está disponible)
+  if (telegramQueue) {
+    await telegramQueue.add('send-receipt', {
+      type: 'payment-receipt',
+      data: {
+        paymentId: result.payment.id,
+        chatId: process.env.TELEGRAM_CHAT_ID,
+        clientName: `${result.client.firstName} ${result.client.lastName}`,
+        amount: result.payment.amount,
+        moraAmount: result.payment.moraAmount,
+        totalReceived: result.payment.totalReceived,
+        outstandingBalance: result.loan.outstandingBalance,
+        paidPayments: result.loan.paidPayments,
+        totalInstallments: result.loan.numberOfPayments,
+        collectorName: `${req.user.firstName} ${req.user.lastName}`,
+        collectedAt: result.payment.collectedAt.toISOString(),
+      },
+    });
+  }
 
   // 7. Flash de éxito y redirección
   req.session.flashSucess = 'Pago registrado exitosamente';

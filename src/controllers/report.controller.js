@@ -8,17 +8,19 @@ const PDF_QUEUE_NAME = 'pdf-generation';
 
 /**
  * Cola BullMQ para generación de PDFs en segundo plano.
- * Se crea con lazy connection para no bloquear el import.
+ * Solo se crea cuando Redis está disponible — en plan gratuito es null.
  */
-const pdfQueue = new Queue(PDF_QUEUE_NAME, {
-  connection: redisClient,
-  defaultJobOptions: {
-    attempts: 3,
-    backoff: { type: 'exponential', delay: 2000 },
-    removeOnComplete: { count: 500 },
-    removeOnFail: { count: 1000 },
-  },
-});
+const pdfQueue = redisClient
+  ? new Queue(PDF_QUEUE_NAME, {
+      connection: redisClient,
+      defaultJobOptions: {
+        attempts: 3,
+        backoff: { type: 'exponential', delay: 2000 },
+        removeOnComplete: { count: 500 },
+        removeOnFail: { count: 1000 },
+      },
+    })
+  : null;
 
 /**
  * GET /admin/reports/export/:format
@@ -108,6 +110,11 @@ const exportReport = asyncHandler(async (req, res) => {
   }
 
   if (format === 'pdf') {
+    if (!pdfQueue) {
+      req.session.flashError = 'La generación de PDF no está disponible (Redis requerido).';
+      return res.redirect('/admin/reports');
+    }
+
     const jobId = `pdf-${organizationId}-${reportDate}`;
 
     await pdfQueue.add(
