@@ -26,45 +26,23 @@ export const getRegister = (req, res) => {
  * contraseña y redirige al login.
  */
 export const postRegister = asyncHandler(async (req, res) => {
-  console.log('[Registration] Inicio de proceso de registro:', { 
-    email: req.body.email,
-    firstName: req.body.firstName,
-    hasPassword: !!req.body.password
-  });
-
   try {
-    // Validación con schema de Zod
     const validatedData = registerSchema.parse(req.body);
-    console.log('[Registration] Datos validados correctamente');
 
-    const result = await authService.registerOrganizationAndUser(validatedData);
-    
-    console.log('[Registration] Usuario creado exitosamente:', {
-      userId: result.user.id,
-      email: result.user.email,
-      organizationId: result.organization.id
-    });
+    await authService.registerOrganizationAndUser(validatedData);
 
     req.session.flashSucess = 'Cuenta creada correctamente. Puedes iniciar sesión.';
-    return res.redirect('/admin/login');
+    // Esperar a que la sesión se guarde antes de redirigir para que la
+    // cookie se envíe correctamente detrás del proxy de Fly.io
+    return req.session.save(() => res.redirect('/admin/login'));
 
   } catch (err) {
-    console.error('[Registration] Error en registro:', {
-      message: err.message,
-      code: err.code,
-      name: err.name,
-      stack: process.env.NODE_ENV === 'development' ? err.stack : undefined
-    });
-
-    // Manejar errores de validación de Zod
     if (err.name === 'ZodError') {
-      const firstError = err.errors[0];
-      req.session.flashError = firstError.message;
-      return res.redirect('/register');
+      req.session.flashError = err.errors[0].message;
+      return req.session.save(() => res.redirect('/register'));
     }
 
-    // Manejar otros errores del servicio
     req.session.flashError = err.message || 'Error al crear la cuenta. Inténtalo de nuevo.';
-    return res.redirect('/register');
+    return req.session.save(() => res.redirect('/register'));
   }
 });

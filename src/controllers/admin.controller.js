@@ -46,7 +46,7 @@ const postLogin = asyncHandler(async (req, res) => {
   // Validación de campos requeridos
   if (!email || !password) {
     req.session.flashError = 'Email y contraseña son requeridos';
-    return res.redirect('/admin/login');
+    return req.session.save(() => res.redirect('/admin/login'));
   }
 
   const { default: prisma } = await import('../config/prisma.js');
@@ -68,24 +68,26 @@ const postLogin = asyncHandler(async (req, res) => {
 
   if (!user || !(await bcrypt.compare(password, user.passwordHash))) {
     req.session.flashError = 'Credenciales inválidas';
-    return res.redirect('/admin/login');
+    return req.session.save(() => res.redirect('/admin/login'));
   }
 
   if (!user.isActive) {
     req.session.flashError = 'Cuenta desactivada. Contacte al administrador';
-    return res.redirect('/admin/login');
+    return req.session.save(() => res.redirect('/admin/login'));
   }
 
   const allowedRoles = ['SUPER_ADMIN', 'ADMIN'];
   if (!allowedRoles.includes(user.role)) {
     req.session.flashError = 'Acceso denegado. Solo administradores';
-    return res.redirect('/admin/login');
+    return req.session.save(() => res.redirect('/admin/login'));
   }
 
   const { passwordHash: _, ...sessionUser } = user;
   req.session.user = sessionUser;
 
-  return res.redirect('/admin/dashboard');
+  // Esperar a que la sesión se persista antes de redirigir para que la
+  // cookie se envíe correctamente detrás del proxy de Fly.io
+  return req.session.save(() => res.redirect('/admin/dashboard'));
 });
 
 /**

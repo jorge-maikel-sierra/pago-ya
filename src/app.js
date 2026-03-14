@@ -77,6 +77,14 @@ app.use(express.static(join(__dirname, '..', 'public')));
 // ============================================
 // SESIONES
 // ============================================
+
+// Fly.io (y la mayoría de PaaS) terminan TLS en el proxy y reenvían HTTP al
+// contenedor. Sin trust proxy Express no marca la conexión como segura y las
+// cookies con secure:true nunca se envían al navegador.
+if (process.env.NODE_ENV === 'production') {
+  app.set('trust proxy', 1);
+}
+
 // Usa RedisStore cuando Redis está disponible.
 // Cae a MemoryStore (express-session default) en el plan gratuito sin Redis.
 // ADVERTENCIA: MemoryStore no es apto para múltiples instancias ni para
