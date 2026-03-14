@@ -119,4 +119,37 @@ const updateUserSchema = z.object({
   }),
 });
 
-export { createUserSchema, updateUserSchema, USER_ROLES, ASSIGNABLE_ROLES };
+/**
+ * Schema de validación para cambiar la contraseña del propio usuario.
+ * PATCH /api/v1/users/:id/password
+ *
+ * Se valida que la nueva contraseña y su confirmación coincidan.
+ *
+ * @type {z.ZodObject}
+ */
+const changePasswordSchema = z
+  .object({
+    body: z.object({
+      currentPassword: z
+        .string({ required_error: 'La contraseña actual es obligatoria' })
+        .min(1, 'La contraseña actual es obligatoria'),
+
+      newPassword: z
+        .string({ required_error: 'La nueva contraseña es obligatoria' })
+        .min(6, 'La nueva contraseña debe tener al menos 6 caracteres')
+        .max(100, 'La nueva contraseña no puede superar 100 caracteres'),
+
+      confirmPassword: z
+        .string({ required_error: 'La confirmación de contraseña es obligatoria' })
+        .min(1, 'La confirmación de contraseña es obligatoria'),
+    }),
+    params: z.object({
+      id: z.string().uuid('El ID del usuario debe ser un UUID válido'),
+    }),
+  })
+  .refine((data) => data.body.newPassword === data.body.confirmPassword, {
+    message: 'La nueva contraseña y su confirmación no coinciden',
+    path: ['body', 'confirmPassword'],
+  });
+
+export { createUserSchema, updateUserSchema, changePasswordSchema, USER_ROLES, ASSIGNABLE_ROLES };
