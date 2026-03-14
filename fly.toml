@@ -10,7 +10,7 @@ primary_region = 'iad'
 
 [deploy]
   strategy = 'bluegreen'
-  release_command = 'npm run db:migrate:prod && npm run db:generate'
+  release_command = 'npx prisma generate --accelerate'
 
 [env]
   NODE_ENV = 'production'
