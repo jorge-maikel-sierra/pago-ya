@@ -24,9 +24,9 @@ RUN apt-get update -qq && \
 COPY package-lock.json package.json ./
 RUN npm ci
 
-# Generate Prisma Client with Accelerate support
+# Generate Prisma Client (sin Accelerate temporalmente)
 COPY prisma .
-RUN npx prisma generate --accelerate
+RUN npx prisma generate
 
 # Copy application code
 COPY . .
