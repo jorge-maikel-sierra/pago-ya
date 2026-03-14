@@ -1,0 +1,9 @@
+node_modules/
+coverage/
+dist/
+public/css/styles.css
+uploads/
+logs/
+prisma/migrations/
+*.min.js
+*.min.css

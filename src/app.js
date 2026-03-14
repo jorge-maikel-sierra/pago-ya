@@ -14,6 +14,7 @@ import redisClient from './config/redis.js';
 import errorHandler from './middleware/errorHandler.js';
 import paymentRoutes from './routes/payment.routes.js';
 import adminRoutes from './routes/admin.routes.js';
+import userRoutes from './routes/user.routes.js';
 
 // --- Rutas de directorio (ESM no tiene __dirname) ---
 const __filename = fileURLToPath(import.meta.url);
@@ -169,6 +170,7 @@ app.get('/api/health', (req, res) => {
 // app.use('/api/loans', loanRoutes);
 app.use('/admin', adminRoutes);
 app.use('/api/v1/payments', paymentRoutes);
+app.use('/api/v1/users', userRoutes);
 
 // --- Ruta 404 ---
 app.use((req, res) => {
