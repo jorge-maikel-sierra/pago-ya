@@ -14,6 +14,7 @@ primary_region = 'iad'
 
 [env]
   NODE_ENV = 'production'
+  PORT = '8080'
 
 [processes]
   web = 'npm start'
