@@ -1,0 +1,66 @@
+# =============================================================================
+# .dockerignore — Archivos excluidos del contexto de build en Fly.io
+# Reduce el tamaño de la imagen y acelera el deploy
+# =============================================================================
+
+# Dependencias (se instalan fresh en el container)
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Archivos de desarrollo
+*.log
+logs/
+coverage/
+.nyc_output/
+
+# Archivos de pruebas
+tests/
+jest.config.js
+**/*.test.js
+**/*.spec.js
+
+# Configuración local
+.env
+.env.local
+.env.*.local
+
+# Git
+.git/
+.gitignore
+
+# CI/CD
+.github/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Build artifacts (se regeneran en el deploy)
+public/css/styles.css
+uploads/
+
+# Documentación
+README.md
+docs/
+*.md
+
+# Configuración local de desarrollo
+nodemon.json
+ecosystem.config.cjs
+pm2.config.js
+
+# Render config (ya eliminado, pero por si acaso)
+render.yaml
+
+# Temporal
+tmp/
+temp/

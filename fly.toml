@@ -1,0 +1,42 @@
+# fly.toml app configuration file generated for pago-ya on 2026-03-14T12:27:04-05:00
+#
+# See https://fly.io/docs/reference/configuration/ for information about how to use this file.
+#
+
+app = 'pago-ya'
+primary_region = 'iad'
+
+[build]
+
+[deploy]
+  strategy = 'bluegreen'
+  release_command = 'npm run db:migrate:prod && npm run db:generate'
+
+[env]
+  NODE_ENV = 'production'
+
+[processes]
+  web = 'npm start'
+
+[[mounts]]
+  source = 'uploads_vol'
+  destination = '/app/uploads'
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = 'stop'
+  auto_start_machines = true
+  min_machines_running = 0
+  processes = ['web']
+
+  [[http_service.checks]]
+    interval = '30s'
+    timeout = '10s'
+    grace_period = '5s'
+    method = 'GET'
+    path = '/api/health'
+
+[[vm]]
+  memory = '1gb'
+  cpus = 1
