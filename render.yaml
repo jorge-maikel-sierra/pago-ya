@@ -1,0 +1,102 @@
+# =============================================================================
+# Render Blueprint — Pago Ya
+# Infraestructura como código para despliegue automático en Render.com
+# Docs: https://render.com/docs/blueprint-spec
+#
+# Servicios definidos:
+#   1. pago-ya-web      → Web Service  (Express + Node.js 20)
+#   2. pago-ya-redis    → Key Value    (Redis/Valkey — sesiones + BullMQ)
+#   3. pago-ya-db       → PostgreSQL   (base de datos principal)
+# =============================================================================
+
+services:
+  # ---------------------------------------------------------------------------
+  # 1. Web Service — Aplicación Express
+  # ---------------------------------------------------------------------------
+  - type: web
+    name: pago-ya-web
+    runtime: node
+    plan: starter           # Cambiar a "standard" en producción real
+    region: oregon
+    branch: main
+    autoDeployTrigger: commit   # Auto-deploy en cada push a main
+
+    # --- Build & Start -------------------------------------------------------
+    buildCommand: npm install && npm run build:css && npm run db:generate
+    startCommand: npm start
+
+    # Pre-deploy: migraciones de base de datos (zero-downtime)
+    preDeployCommand: npm run db:migrate:prod
+
+    # --- Health Check --------------------------------------------------------
+    healthCheckPath: /api/health
+
+    # --- Graceful shutdown (workers BullMQ necesitan tiempo extra) -----------
+    maxShutdownDelaySeconds: 60
+
+    # --- Variables de entorno ------------------------------------------------
+    envVars:
+      # Inyectadas automáticamente por Render
+      - key: NODE_ENV
+        value: production
+
+      # Base de datos — referencia al servicio PostgreSQL declarado abajo
+      - key: DATABASE_URL
+        fromDatabase:
+          name: pago-ya-db
+          property: connectionString
+
+      # Redis — referencia al servicio Key Value declarado abajo
+      - key: REDIS_URL
+        fromService:
+          name: pago-ya-redis
+          type: keyvalue
+          property: connectionString
+
+      # Secretos — Render los solicita en el dashboard durante la 1ª creación.
+      # Después deben editarse manualmente desde el panel de cada servicio.
+      - key: JWT_SECRET
+        generateValue: true         # Render genera un valor aleatorio seguro
+      - key: JWT_EXPIRES_IN
+        value: 8h
+      - key: JWT_REFRESH_SECRET
+        generateValue: true
+      - key: SESSION_SECRET
+        generateValue: true
+
+      # Telegram (añadir manualmente en el dashboard si se usa)
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false                 # Render pedirá el valor en el formulario de creación
+      - key: TELEGRAM_CHAT_ID
+        sync: false
+
+      # Parámetros financieros (ajustar según regulación local)
+      - key: USURY_RATE_ANNUAL
+        value: "0.36"
+      - key: DEFAULT_MORA_RATE_ANNUAL
+        value: "0.12"
+
+      # CORS — URL pública del propio servicio (completar después del primer deploy)
+      - key: CORS_ORIGIN
+        sync: false
+
+  # ---------------------------------------------------------------------------
+  # 2. Key Value (Redis/Valkey) — Sesiones y colas BullMQ
+  # ---------------------------------------------------------------------------
+  - type: keyvalue
+    name: pago-ya-redis
+    plan: free
+    region: oregon
+    maxmemoryPolicy: noeviction    # BullMQ requiere que los jobs no se evicten
+    ipAllowList:
+      - source: 0.0.0.0/0
+        description: allow all    # La red privada de Render es suficientemente segura
+
+# -----------------------------------------------------------------------------
+# 3. PostgreSQL — Base de datos principal
+# -----------------------------------------------------------------------------
+databases:
+  - name: pago-ya-db
+    plan: free
+    region: oregon
+    postgresMajorVersion: "16"
