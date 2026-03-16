@@ -81,18 +81,29 @@ export const createCollector = async (organizationId, data) => {
   const { firstName, lastName, email, phone, password } = data;
   const passwordHash = await bcrypt.hash(password, SALT_ROUNDS);
 
-  return prisma.user.create({
-    data: {
-      organizationId,
-      firstName,
-      lastName,
-      email,
-      phone: phone || null,
-      role: 'COLLECTOR',
-      passwordHash,
-      isActive: true,
-    },
-  });
+  try {
+    return await prisma.user.create({
+      data: {
+        organizationId,
+        firstName,
+        lastName,
+        email,
+        phone: phone || null,
+        role: 'COLLECTOR',
+        passwordHash,
+        isActive: true,
+      },
+    });
+  } catch (error) {
+    // email tiene constraint única global en la tabla users (ver schema.prisma @unique)
+    if (error.code === 'P2002') {
+      const err = new Error('El email ya está registrado por otro usuario');
+      err.statusCode = 409;
+      err.isOperational = true;
+      throw err;
+    }
+    throw error;
+  }
 };
 
 /**
@@ -121,5 +132,15 @@ export const updateCollector = async (id, organizationId, data) => {
     updateData.passwordHash = await bcrypt.hash(password, SALT_ROUNDS);
   }
 
-  return prisma.user.update({ where: { id }, data: updateData });
+  try {
+    return await prisma.user.update({ where: { id }, data: updateData });
+  } catch (error) {
+    if (error.code === 'P2002') {
+      const err = new Error('El email ya está registrado por otro usuario');
+      err.statusCode = 409;
+      err.isOperational = true;
+      throw err;
+    }
+    throw error;
+  }
 };

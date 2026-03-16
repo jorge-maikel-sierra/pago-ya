@@ -61,21 +61,33 @@ export const createOrganization = async (data) => {
     isActive,
   } = data;
 
-  return prisma.organization.create({
-    data: {
-      name,
-      nit: nit || null,
-      phone: phone || null,
-      email: email || null,
-      address: address || null,
-      logoUrl: logoUrl || null,
-      planType: planType || 'BASIC',
-      subscriptionEnds: subscriptionEnds ? new Date(subscriptionEnds) : null,
-      moraGraceDays: moraGraceDays ?? 0,
-      moraMultiplier: moraMultiplier ?? 1.5,
-      isActive: isActive ?? true,
-    },
-  });
+  try {
+    return await prisma.organization.create({
+      data: {
+        name,
+        nit: nit || null,
+        phone: phone || null,
+        email: email || null,
+        address: address || null,
+        logoUrl: logoUrl || null,
+        planType: planType || 'BASIC',
+        subscriptionEnds: subscriptionEnds ? new Date(subscriptionEnds) : null,
+        moraGraceDays: moraGraceDays ?? 0,
+        moraMultiplier: moraMultiplier ?? 1.5,
+        isActive: isActive ?? true,
+      },
+    });
+  } catch (error) {
+    // nit y email tienen constraint única en la tabla organizations (ver schema.prisma @unique)
+    if (error.code === 'P2002') {
+      const field = error.meta?.target?.[0] || 'campo';
+      const err = new Error(`El ${field} ya está registrado en otra organización`);
+      err.statusCode = 409;
+      err.isOperational = true;
+      throw err;
+    }
+    throw error;
+  }
 };
 
 /**
@@ -156,18 +168,29 @@ export const createOrgUser = async (organizationId, data) => {
   const { firstName, lastName, email, phone, role, password, isActive } = data;
   const passwordHash = await bcrypt.hash(password, SALT_ROUNDS);
 
-  return prisma.user.create({
-    data: {
-      organizationId,
-      firstName,
-      lastName,
-      email,
-      phone: phone || null,
-      role,
-      passwordHash,
-      isActive: isActive ?? true,
-    },
-  });
+  try {
+    return await prisma.user.create({
+      data: {
+        organizationId,
+        firstName,
+        lastName,
+        email,
+        phone: phone || null,
+        role,
+        passwordHash,
+        isActive: isActive ?? true,
+      },
+    });
+  } catch (error) {
+    // email tiene constraint única global en la tabla users (ver schema.prisma @unique)
+    if (error.code === 'P2002') {
+      const err = new Error('El email ya está registrado por otro usuario');
+      err.statusCode = 409;
+      err.isOperational = true;
+      throw err;
+    }
+    throw error;
+  }
 };
 
 /**
@@ -197,5 +220,15 @@ export const updateOrgUser = async (id, organizationId, data) => {
     updateData.passwordHash = await bcrypt.hash(password, SALT_ROUNDS);
   }
 
-  return prisma.user.update({ where: { id }, data: updateData });
+  try {
+    return await prisma.user.update({ where: { id }, data: updateData });
+  } catch (error) {
+    if (error.code === 'P2002') {
+      const err = new Error('El email ya está registrado por otro usuario');
+      err.statusCode = 409;
+      err.isOperational = true;
+      throw err;
+    }
+    throw error;
+  }
 };

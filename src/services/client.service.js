@@ -203,26 +203,37 @@ export const createClient = async (organizationId, data) => {
     isActive,
   } = data;
 
-  return prisma.client.create({
-    data: {
-      organizationId,
-      firstName,
-      lastName,
-      documentType: documentType || 'CC',
-      documentNumber,
-      phone: phone || null,
-      address,
-      neighborhood: neighborhood || null,
-      city: city || 'Riohacha',
-      referenceContact: referenceContact || null,
-      referencePhone: referencePhone || null,
-      businessName: businessName || null,
-      businessAddress: businessAddress || null,
-      notes: notes || null,
-      routeId: routeId || null,
-      isActive,
-    },
-  });
+  try {
+    return await prisma.client.create({
+      data: {
+        organizationId,
+        firstName,
+        lastName,
+        documentType: documentType || 'CC',
+        documentNumber,
+        phone: phone || null,
+        address,
+        neighborhood: neighborhood || null,
+        city: city || 'Riohacha',
+        referenceContact: referenceContact || null,
+        referencePhone: referencePhone || null,
+        businessName: businessName || null,
+        businessAddress: businessAddress || null,
+        notes: notes || null,
+        routeId: routeId || null,
+        isActive,
+      },
+    });
+  } catch (error) {
+    // documentNumber tiene constraint única por organización (ver schema.prisma @unique)
+    if (error.code === 'P2002') {
+      const err = new Error('Ya existe un cliente con esa cédula en esta organización');
+      err.statusCode = 409;
+      err.isOperational = true;
+      throw err;
+    }
+    throw error;
+  }
 };
 
 /**
@@ -254,26 +265,37 @@ export const updateClient = async (id, organizationId, data) => {
     isActive,
   } = data;
 
-  return prisma.client.update({
-    where: { id },
-    data: {
-      firstName,
-      lastName,
-      documentType: documentType || 'CC',
-      documentNumber,
-      phone: phone || null,
-      address,
-      neighborhood: neighborhood || null,
-      city: city || 'Riohacha',
-      referenceContact: referenceContact || null,
-      referencePhone: referencePhone || null,
-      businessName: businessName || null,
-      businessAddress: businessAddress || null,
-      notes: notes || null,
-      routeId: routeId || null,
-      isActive,
-    },
-  });
+  try {
+    return await prisma.client.update({
+      where: { id },
+      data: {
+        firstName,
+        lastName,
+        documentType: documentType || 'CC',
+        documentNumber,
+        phone: phone || null,
+        address,
+        neighborhood: neighborhood || null,
+        city: city || 'Riohacha',
+        referenceContact: referenceContact || null,
+        referencePhone: referencePhone || null,
+        businessName: businessName || null,
+        businessAddress: businessAddress || null,
+        notes: notes || null,
+        routeId: routeId || null,
+        isActive,
+      },
+    });
+  } catch (error) {
+    // documentNumber tiene constraint única por organización (ver schema.prisma @unique)
+    if (error.code === 'P2002') {
+      const err = new Error('Ya existe otro cliente con esa cédula en esta organización');
+      err.statusCode = 409;
+      err.isOperational = true;
+      throw err;
+    }
+    throw error;
+  }
 };
 
 /**

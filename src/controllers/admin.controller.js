@@ -340,9 +340,9 @@ const createClient = asyncHandler(async (req, res) => {
     req.session.flashSucess = 'Cliente creado correctamente';
     return res.redirect('/admin/clients');
   } catch (error) {
-    if (error.code === 'P2002') {
-      req.session.flashError = 'Ya existe un cliente con esa cédula en tu organización';
-      return res.redirect('/admin/clients/new');
+    if (error.isOperational) {
+      req.session.flashError = error.message;
+      return req.session.save(() => res.redirect('/admin/clients/new'));
     }
     throw error;
   }
@@ -360,15 +360,11 @@ const getEditClient = asyncHandler(async (req, res) => {
   const { flashError } = req.session;
   delete req.session.flashError;
 
+  // findClientForEdit lanza 404 si el cliente no existe — no se necesita verificación manual
   const [client, routes] = await Promise.all([
     clientService.findClientForEdit(id, req.user.organizationId),
     clientService.getClientFormRoutes(req.user.organizationId),
   ]);
-
-  if (!client) {
-    req.session.flashError = 'Cliente no encontrado';
-    return res.redirect('/admin/clients');
-  }
 
   return res.render('pages/clients/edit', {
     title: 'Editar Cliente',
@@ -396,9 +392,9 @@ const updateClient = asyncHandler(async (req, res) => {
     req.session.flashSucess = 'Cliente actualizado correctamente';
     return res.redirect('/admin/clients');
   } catch (error) {
-    if (error.code === 'P2002') {
-      req.session.flashError = 'Ya existe otro cliente con esa cédula';
-      return res.redirect(`/admin/clients/${id}/edit`);
+    if (error.isOperational) {
+      req.session.flashError = error.message;
+      return req.session.save(() => res.redirect(`/admin/clients/${id}/edit`));
     }
     throw error;
   }
@@ -478,9 +474,9 @@ const createCollector = asyncHandler(async (req, res) => {
     req.session.flashSucess = 'Cobrador creado correctamente';
     return res.redirect('/admin/collectors');
   } catch (error) {
-    if (error.code === 'P2002') {
-      req.session.flashError = 'El email ya está registrado';
-      return res.redirect('/admin/collectors/new');
+    if (error.isOperational) {
+      req.session.flashError = error.message;
+      return req.session.save(() => res.redirect('/admin/collectors/new'));
     }
     throw error;
   }
@@ -495,16 +491,11 @@ const createCollector = asyncHandler(async (req, res) => {
  */
 const getEditCollector = asyncHandler(async (req, res) => {
   const { id } = req.params;
-
-  const collector = await collectorService.findCollectorById(id, req.user.organizationId);
-
-  if (!collector) {
-    req.session.flashError = 'Cobrador no encontrado';
-    return res.redirect('/admin/collectors');
-  }
-
   const { flashError } = req.session;
   delete req.session.flashError;
+
+  // findCollectorById lanza 404 si el cobrador no existe — no se necesita verificación manual
+  const collector = await collectorService.findCollectorById(id, req.user.organizationId);
 
   return res.render('pages/collectors/edit', {
     title: 'Editar Cobrador',
@@ -530,9 +521,9 @@ const updateCollector = asyncHandler(async (req, res) => {
     req.session.flashSucess = 'Cobrador actualizado correctamente';
     return res.redirect('/admin/collectors');
   } catch (error) {
-    if (error.code === 'P2002') {
-      req.session.flashError = 'El email ya está registrado por otro usuario';
-      return res.redirect(`/admin/collectors/${id}/edit`);
+    if (error.isOperational) {
+      req.session.flashError = error.message;
+      return req.session.save(() => res.redirect(`/admin/collectors/${id}/edit`));
     }
     throw error;
   }
@@ -796,9 +787,9 @@ const createUser = asyncHandler(async (req, res) => {
     req.session.flashSucess = 'Usuario creado correctamente';
     return res.redirect('/admin/users');
   } catch (error) {
-    if (error.code === 'P2002') {
-      req.session.flashError = 'El email ya está registrado';
-      return res.redirect('/admin/users/new');
+    if (error.isOperational) {
+      req.session.flashError = error.message;
+      return req.session.save(() => res.redirect('/admin/users/new'));
     }
     throw error;
   }
@@ -813,16 +804,11 @@ const createUser = asyncHandler(async (req, res) => {
  */
 const getEditUser = asyncHandler(async (req, res) => {
   const { id } = req.params;
-
-  const targetUser = await organizationService.findOrgUserById(id, req.user.organizationId);
-
-  if (!targetUser) {
-    req.session.flashError = 'Usuario no encontrado';
-    return res.redirect('/admin/users');
-  }
-
   const { flashError } = req.session;
   delete req.session.flashError;
+
+  // findOrgUserById lanza 404 si el usuario no existe — no se necesita verificación manual
+  const targetUser = await organizationService.findOrgUserById(id, req.user.organizationId);
 
   return res.render('pages/users/edit', {
     title: 'Editar Usuario',
@@ -848,9 +834,9 @@ const updateUser = asyncHandler(async (req, res) => {
     req.session.flashSucess = 'Usuario actualizado correctamente';
     return res.redirect('/admin/users');
   } catch (error) {
-    if (error.code === 'P2002') {
-      req.session.flashError = 'El email ya está registrado por otro usuario';
-      return res.redirect(`/admin/users/${id}/edit`);
+    if (error.isOperational) {
+      req.session.flashError = error.message;
+      return req.session.save(() => res.redirect(`/admin/users/${id}/edit`));
     }
     throw error;
   }
@@ -918,10 +904,9 @@ const createOrganization = asyncHandler(async (req, res) => {
     req.session.flashSucess = 'Organización creada correctamente';
     return res.redirect('/admin/organizations');
   } catch (error) {
-    if (error.code === 'P2002') {
-      const field = error.meta?.target?.[0] || 'campo';
-      req.session.flashError = `El ${field} ya está registrado en otra organización`;
-      return res.redirect('/admin/organizations/new');
+    if (error.isOperational) {
+      req.session.flashError = error.message;
+      return req.session.save(() => res.redirect('/admin/organizations/new'));
     }
     throw error;
   }

@@ -84,8 +84,9 @@ export const findAllUsers = async (organizationId, filters = {}) => {
  * @returns {Promise<object>}
  */
 export const findUserById = async (id, organizationId) => {
-  return prisma.user.findUniqueOrThrow({
-    where: { id },
+  // findFirstOrThrow con organizationId garantiza scope multi-tenant
+  return prisma.user.findFirstOrThrow({
+    where: { id, organizationId },
     select: {
       ...USER_PUBLIC_SELECT,
       organization: { select: { id: true, name: true } },
