@@ -199,14 +199,16 @@ app.get('/api/v1/health/db', getDatabaseHealth);
 app.get('/api/v1/health/users', getUsersHealth);
 
 app.use('/admin', adminRoutes);
-// Rutas de autenticación públicas (login / register)
+// authRoutes expone /register — se monta en raíz porque también es la ruta base de la app
 app.use('/', authRoutes);
 app.use('/api/v1/payments', paymentRoutes);
 app.use('/api/v1/users', userRoutes);
 
-// --- Ruta 404 ---
+// --- Ruta catch-all 404 ---
+// Debe ser la ÚLTIMA ruta registrada (antes del errorHandler).
+// app.use('*') captura cualquier método y ruta no resuelta por los routers anteriores.
 // Responde HTML al panel EJS y JSON a la API — igual que el errorHandler.
-app.use((req, res) => {
+app.use('*', (req, res) => {
   const statusCode = 404;
   const message = `Ruta ${req.originalUrl} no encontrada`;
 

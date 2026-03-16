@@ -246,9 +246,9 @@ describe('admin.routes', () => {
       expect(mockGetClient).toHaveBeenCalled();
     });
 
-    it('PUT /admin/clients/:id/restrict calls restrictClient', async () => {
+    it('PATCH /admin/clients/:id/status calls restrictClient', async () => {
       await request(app)
-        .put('/admin/clients/client-456/restrict')
+        .patch('/admin/clients/client-456/status')
         .set('x-test-session', adminSession)
         .expect(200);
 
@@ -287,9 +287,9 @@ describe('admin.routes', () => {
       expect(mockGetReports).toHaveBeenCalled();
     });
 
-    it('GET /admin/reports/export/:format calls exportReport', async () => {
+    it('GET /admin/reports/export?format=csv calls exportReport', async () => {
       await request(app)
-        .get('/admin/reports/export/csv')
+        .get('/admin/reports/export?format=csv')
         .set('x-test-session', adminSession)
         .expect(200);
 

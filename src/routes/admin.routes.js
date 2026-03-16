@@ -5,48 +5,26 @@ import {
   getLogin,
   postLogin,
   getDashboard,
-  getLoans,
-  getNewLoan,
-  previewLoan,
-  createLoan,
-  getLoan,
-  getClients,
-  getClient,
-  getNewClient,
-  createClient,
-  getEditClient,
-  updateClient,
-  restrictClient,
-  getCollectors,
-  getNewCollector,
-  createCollector,
-  getEditCollector,
-  updateCollector,
-  getPayments,
-  getNewPayment,
-  createPayment,
   getRoutes,
-  getReports,
   getSettings,
-  getUsers,
-  getNewUser,
-  createUser,
-  getEditUser,
-  updateUser,
-  getOrganizations,
-  getNewOrganization,
-  createOrganization,
   logout,
 } from '../controllers/admin.controller.js';
-import { exportReport } from '../controllers/report.controller.js';
-import validate from '../middleware/validate.js';
-import { createOrganizationSchema } from '../schemas/organization.schema.js';
-import { createUserSchema, updateUserSchema } from '../schemas/user.schema.js';
-import {
-  createClientMiddlewareSchema,
-  updateClientMiddlewareSchema,
-} from '../schemas/client.schema.js';
-import { createCollectorSchema, updateCollectorSchema } from '../schemas/collector.schema.js';
+
+import loansRouter from './admin.loans.routes.js';
+import clientsRouter from './admin.clients.routes.js';
+import collectorsRouter from './admin.collectors.routes.js';
+import paymentsRouter from './admin.payments.routes.js';
+import reportsRouter from './admin.reports.routes.js';
+import usersRouter from './admin.users.routes.js';
+import organizationsRouter from './admin.organizations.routes.js';
+
+// ============================================
+// Admin Router — Pago Ya
+// Ruta base (montaje): /admin
+//
+// Este router es el orquestador del panel administrativo.
+// Cada recurso tiene su propio sub-router en routes/admin.*.routes.js
+// ============================================
 
 const router = Router();
 
@@ -59,6 +37,7 @@ router.post('/login', postLogin);
 
 // ============================================
 // RUTAS PROTEGIDAS (sesión + rol ADMIN o SUPER_ADMIN)
+// Todos los sub-routers heredan este middleware al ser montados aquí.
 // ============================================
 
 router.use(verifySession);
@@ -67,68 +46,24 @@ router.use(authorize('SUPER_ADMIN', 'ADMIN'));
 router.get('/', (req, res) => res.redirect('/admin/dashboard'));
 router.get('/dashboard', getDashboard);
 
-// --- Préstamos ---
-router.get('/loans', getLoans);
-router.get('/loans/new', getNewLoan);
-router.post('/loans/preview', previewLoan);
-router.post('/loans', createLoan);
-router.get('/loans/:id', getLoan);
+// --- Recursos del panel (cada uno con su Router propio) ---
+router.use('/loans', loansRouter);
+router.use('/clients', clientsRouter);
+router.use('/collectors', collectorsRouter);
+router.use('/payments', paymentsRouter);
+router.use('/reports', reportsRouter);
 
-// --- Clientes ---
-router.get('/clients', getClients);
-router.get('/clients/new', getNewClient);
-router.post('/clients', validate(createClientMiddlewareSchema), createClient);
-router.get('/clients/:id/edit', getEditClient);
-router.put('/clients/:id', validate(updateClientMiddlewareSchema), updateClient);
-router.get('/clients/:id', getClient);
-// PATCH expresa una modificación parcial del estado — correcto para alternar activo/restringido
-router.patch('/clients/:id/status', restrictClient);
-
-// --- Cobradores ---
-router.get('/collectors', getCollectors);
-router.get('/collectors/new', getNewCollector);
-router.post('/collectors', validate(createCollectorSchema), createCollector);
-router.get('/collectors/:id/edit', getEditCollector);
-router.put('/collectors/:id', validate(updateCollectorSchema), updateCollector);
-
-// --- Rutas de cobro ---
+// --- Rutas de cobro (sin sub-recursos propios) ---
 router.get('/routes', getRoutes);
 
-// --- Pagos ---
-router.get('/payments', getPayments);
-router.get('/payments/new', getNewPayment);
-router.post('/payments', createPayment);
-
-// --- Reportes ---
-router.get('/reports', getReports);
-router.get('/reports/export/:format', exportReport);
-
 // --- Configuración ---
-
 router.get('/settings', getSettings);
 
 // --- Logout ---
 router.delete('/logout', logout);
 
-// ============================================
-// RUTAS SUPER_ADMIN (solo SUPER_ADMIN)
-// ============================================
-
-// --- Usuarios ---
-router.get('/users', authorize('SUPER_ADMIN'), getUsers);
-router.get('/users/new', authorize('SUPER_ADMIN'), getNewUser);
-router.post('/users', authorize('SUPER_ADMIN'), validate(createUserSchema), createUser);
-router.get('/users/:id/edit', authorize('SUPER_ADMIN'), getEditUser);
-router.put('/users/:id', authorize('SUPER_ADMIN'), validate(updateUserSchema), updateUser);
-
-// --- Organizaciones ---
-router.get('/organizations', authorize('SUPER_ADMIN'), getOrganizations);
-router.get('/organizations/new', authorize('SUPER_ADMIN'), getNewOrganization);
-router.post(
-  '/organizations',
-  authorize('SUPER_ADMIN'),
-  validate(createOrganizationSchema),
-  createOrganization,
-);
+// --- Recursos exclusivos SUPER_ADMIN ---
+router.use('/users', usersRouter);
+router.use('/organizations', organizationsRouter);
 
 export default router;

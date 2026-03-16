@@ -5,19 +5,22 @@ import { getDailyExportData } from '../services/report.service.js';
 import { enqueuePdfGeneration } from '../services/notification.service.js';
 
 /**
- * GET /admin/reports/export/:format
+ * GET /admin/reports/export?format=xlsx|pdf
  *
  * Genera un reporte de cartera y lo entrega según el formato:
  * - **xlsx**: genera síncronamente y envía como descarga directa.
  * - **pdf**: encola un job en BullMQ para procesamiento en segundo plano.
  * - Otro formato: lanza error 400.
  *
+ * El formato va en req.query y no en req.params porque no identifica un
+ * recurso distinto — es un modificador de presentación del mismo recurso.
+ *
  * @param {import('express').Request} req
  * @param {import('express').Response} res
  * @throws {Error} statusCode 400 para formatos no soportados
  */
 const exportReport = asyncHandler(async (req, res) => {
-  const { format } = req.params;
+  const { format } = req.query;
   const { organizationId } = req.user;
   const reportDate = dayjs().format('YYYY-MM-DD');
 

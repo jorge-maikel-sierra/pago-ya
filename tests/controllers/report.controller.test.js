@@ -60,7 +60,8 @@ const createReq = (overrides = {}) => ({
     role: 'ADMIN',
     ...overrides.user,
   },
-  params: { format: 'xlsx', ...overrides.params },
+  params: { ...overrides.params },
+  query: { format: 'xlsx', ...overrides.query },
   session: { ...overrides.session },
 });
 
@@ -89,7 +90,7 @@ describe('exportReport (xlsx)', () => {
   });
 
   it('consulta la organización por el organizationId del usuario', async () => {
-    const req = createReq({ params: { format: 'xlsx' } });
+    const req = createReq({ query: { format: 'xlsx' } });
     const res = createRes();
 
     await exportReport(req, res);
@@ -101,7 +102,7 @@ describe('exportReport (xlsx)', () => {
   });
 
   it('consulta los schedules del día actual para la organización', async () => {
-    const req = createReq({ params: { format: 'xlsx' } });
+    const req = createReq({ query: { format: 'xlsx' } });
     const res = createRes();
 
     await exportReport(req, res);
@@ -116,7 +117,7 @@ describe('exportReport (xlsx)', () => {
   });
 
   it('llama a generateDailyPortfolioExcel con filas mapeadas', async () => {
-    const req = createReq({ params: { format: 'xlsx' } });
+    const req = createReq({ query: { format: 'xlsx' } });
     const res = createRes();
 
     await exportReport(req, res);
@@ -137,7 +138,7 @@ describe('exportReport (xlsx)', () => {
 
   it('usa "Paga Diario" como nombre si la organización no existe', async () => {
     mockFindUniqueOrg.mockResolvedValue(undefined);
-    const req = createReq({ params: { format: 'xlsx' } });
+    const req = createReq({ query: { format: 'xlsx' } });
     const res = createRes();
 
     await exportReport(req, res);
@@ -150,7 +151,7 @@ describe('exportReport (xlsx)', () => {
   });
 
   it('establece el header Content-Disposition con el nombre del archivo', async () => {
-    const req = createReq({ params: { format: 'xlsx' } });
+    const req = createReq({ query: { format: 'xlsx' } });
     const res = createRes();
 
     await exportReport(req, res);
@@ -162,7 +163,7 @@ describe('exportReport (xlsx)', () => {
   });
 
   it('establece el Content-Type correcto para xlsx', async () => {
-    const req = createReq({ params: { format: 'xlsx' } });
+    const req = createReq({ query: { format: 'xlsx' } });
     const res = createRes();
 
     await exportReport(req, res);
@@ -176,7 +177,7 @@ describe('exportReport (xlsx)', () => {
   it('envía el buffer generado con res.send', async () => {
     const fakeBuffer = Buffer.from('excel-content');
     mockGenerateExcel.mockResolvedValue(fakeBuffer);
-    const req = createReq({ params: { format: 'xlsx' } });
+    const req = createReq({ query: { format: 'xlsx' } });
     const res = createRes();
 
     await exportReport(req, res);
@@ -185,7 +186,7 @@ describe('exportReport (xlsx)', () => {
   });
 
   it('mapea correctamente los campos de un schedule a PortfolioRow', async () => {
-    const req = createReq({ params: { format: 'xlsx' } });
+    const req = createReq({ query: { format: 'xlsx' } });
     const res = createRes();
 
     await exportReport(req, res);
@@ -214,7 +215,7 @@ describe('exportReport (xlsx)', () => {
         },
       },
     ]);
-    const req = createReq({ params: { format: 'xlsx' } });
+    const req = createReq({ query: { format: 'xlsx' } });
     const res = createRes();
 
     await exportReport(req, res);
@@ -226,7 +227,7 @@ describe('exportReport (xlsx)', () => {
 
   it('propaga errores de Prisma', async () => {
     mockFindUniqueOrg.mockRejectedValue(new Error('DB connection lost'));
-    const req = createReq({ params: { format: 'xlsx' } });
+    const req = createReq({ query: { format: 'xlsx' } });
     const res = createRes();
 
     await expect(exportReport(req, res)).rejects.toThrow('DB connection lost');
@@ -234,7 +235,7 @@ describe('exportReport (xlsx)', () => {
 
   it('propaga errores de generateDailyPortfolioExcel', async () => {
     mockGenerateExcel.mockRejectedValue(new Error('Excel generation failed'));
-    const req = createReq({ params: { format: 'xlsx' } });
+    const req = createReq({ query: { format: 'xlsx' } });
     const res = createRes();
 
     await expect(exportReport(req, res)).rejects.toThrow('Excel generation failed');
@@ -246,7 +247,7 @@ describe('exportReport (xlsx)', () => {
 // ============================================
 describe('exportReport (pdf)', () => {
   it('encola un job en la cola pdf-generation', async () => {
-    const req = createReq({ params: { format: 'pdf' } });
+    const req = createReq({ query: { format: 'pdf' } });
     const res = createRes();
 
     await exportReport(req, res);
@@ -261,7 +262,7 @@ describe('exportReport (pdf)', () => {
   });
 
   it('establece flashSucess en la sesión', async () => {
-    const req = createReq({ params: { format: 'pdf' } });
+    const req = createReq({ query: { format: 'pdf' } });
     const res = createRes();
 
     await exportReport(req, res);
@@ -271,7 +272,7 @@ describe('exportReport (pdf)', () => {
   });
 
   it('redirige a /admin/reports', async () => {
-    const req = createReq({ params: { format: 'pdf' } });
+    const req = createReq({ query: { format: 'pdf' } });
     const res = createRes();
 
     await exportReport(req, res);
@@ -280,7 +281,7 @@ describe('exportReport (pdf)', () => {
   });
 
   it('incluye reportDate en los datos del job', async () => {
-    const req = createReq({ params: { format: 'pdf' } });
+    const req = createReq({ query: { format: 'pdf' } });
     const res = createRes();
 
     await exportReport(req, res);
@@ -291,7 +292,7 @@ describe('exportReport (pdf)', () => {
 
   it('guarda flashError en sesión si la cola falla y redirige', async () => {
     mockEnqueuePdfGeneration.mockRejectedValueOnce(new Error('Redis unavailable'));
-    const req = createReq({ params: { format: 'pdf' } });
+    const req = createReq({ query: { format: 'pdf' } });
     const res = createRes();
 
     await exportReport(req, res);
@@ -306,14 +307,14 @@ describe('exportReport (pdf)', () => {
 // ============================================
 describe('exportReport (formato inválido)', () => {
   it('lanza error 400 para formato csv', async () => {
-    const req = createReq({ params: { format: 'csv' } });
+    const req = createReq({ query: { format: 'csv' } });
     const res = createRes();
 
     await expect(exportReport(req, res)).rejects.toThrow('Formato de reporte no soportado: csv');
   });
 
   it('lanza error con statusCode 400', async () => {
-    const req = createReq({ params: { format: 'xml' } });
+    const req = createReq({ query: { format: 'xml' } });
     const res = createRes();
 
     try {
@@ -324,7 +325,7 @@ describe('exportReport (formato inválido)', () => {
   });
 
   it('no llama a generateExcel ni a la cola para formatos inválidos', async () => {
-    const req = createReq({ params: { format: 'txt' } });
+    const req = createReq({ query: { format: 'txt' } });
     const res = createRes();
 
     try {
