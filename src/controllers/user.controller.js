@@ -91,7 +91,12 @@ export const changePassword = asyncHandler(async (req, res) => {
   // req.body ya fue validado por validate(changePasswordSchema) en la ruta
   const { currentPassword, newPassword } = req.body;
 
-  const result = await userService.changePassword(userId, organizationId, currentPassword, newPassword);
+  const result = await userService.changePassword(
+    userId,
+    organizationId,
+    currentPassword,
+    newPassword,
+  );
   return apiResponse.success(res, result, 'Contraseña actualizada correctamente');
 });
 
