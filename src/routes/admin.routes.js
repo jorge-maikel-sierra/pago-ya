@@ -81,7 +81,8 @@ router.post('/clients', validate(createClientMiddlewareSchema), createClient);
 router.get('/clients/:id/edit', getEditClient);
 router.put('/clients/:id', validate(updateClientMiddlewareSchema), updateClient);
 router.get('/clients/:id', getClient);
-router.put('/clients/:id/restrict', restrictClient);
+// PATCH expresa una modificación parcial del estado — correcto para alternar activo/restringido
+router.patch('/clients/:id/status', restrictClient);
 
 // --- Cobradores ---
 router.get('/collectors', getCollectors);

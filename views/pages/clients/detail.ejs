@@ -107,7 +107,7 @@
     <!-- Acciones -->
     <div class="mt-6 pt-6 border-t border-gray-100 dark:border-gray-700 flex flex-wrap gap-3">
       <% if (client.isActive) { %>
-        <form action="/admin/clients/<%= client.id %>/restrict?_method=PUT" method="POST"
+        <form action="/admin/clients/<%= client.id %>/status?_method=PATCH" method="POST"
           onsubmit="return confirm('¿Seguro que deseas restringir a este cliente?')">
           <button type="submit"
             class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-red-600 text-white text-sm font-semibold
@@ -116,7 +116,7 @@
           </button>
         </form>
       <% } else { %>
-        <form action="/admin/clients/<%= client.id %>/restrict?_method=PUT" method="POST"
+        <form action="/admin/clients/<%= client.id %>/status?_method=PATCH" method="POST"
           onsubmit="return confirm('¿Seguro que deseas reactivar a este cliente?')">
           <button type="submit"
             class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-brand-green text-white text-sm font-semibold

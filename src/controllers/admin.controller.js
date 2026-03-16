@@ -404,8 +404,9 @@ const updateClient = asyncHandler(async (req, res) => {
 });
 
 /**
- * PUT /admin/clients/:id/restrict
+ * PATCH /admin/clients/:id/status
  * Alterna el estado de restricción de un cliente (activo ↔ restringido).
+ * Se usa PATCH porque es una modificación parcial del recurso (solo el campo de estado).
  *
  * @param {import('express').Request} req
  * @param {import('express').Response} res
