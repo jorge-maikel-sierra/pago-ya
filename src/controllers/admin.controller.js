@@ -1,7 +1,7 @@
 import asyncHandler from '../utils/asyncHandler.js';
 import * as apiResponse from '../utils/apiResponse.js';
 import * as adminService from '../services/admin.service.js';
-import * as authService from '../services/auth.service.js';
+import passport from '../config/passport.js';
 import * as loanService from '../services/loan.service.js';
 import * as clientService from '../services/client.service.js';
 import * as collectorService from '../services/collector.service.js';
@@ -43,25 +43,19 @@ const getLogin = (req, res) => {
  * @param {import('express').Request} req
  * @param {import('express').Response} res
  */
-const postLogin = asyncHandler(async (req, res) => {
-  const { email, password } = req.body;
+const postLogin = (req, res, next) =>
+  passport.authenticate('local', (err, user, info) => {
+    if (err) return next(err);
+    if (!user) {
+      req.session.flashError = info?.message || 'Credenciales inválidas';
+      return req.session.save(() => res.redirect('/admin/login'));
+    }
 
-  if (!email || !password) {
-    req.session.flashError = 'Email y contraseña son requeridos';
-    return req.session.save(() => res.redirect('/admin/login'));
-  }
-
-  try {
-    const sessionUser = await authService.loginAdminUser(email, password);
-    req.session.user = sessionUser;
-    // Esperar a que la sesión se persista antes de redirigir para que la
-    // cookie se envíe correctamente detrás del proxy de Fly.io
-    return req.session.save(() => res.redirect('/admin/dashboard'));
-  } catch (err) {
-    req.session.flashError = err.message;
-    return req.session.save(() => res.redirect('/admin/login'));
-  }
-});
+    return req.login(user, (loginErr) => {
+      if (loginErr) return next(loginErr);
+      return req.session.save(() => res.redirect('/admin/dashboard'));
+    });
+  })(req, res, next);
 
 /**
  * DELETE /admin/logout
@@ -70,10 +64,14 @@ const postLogin = asyncHandler(async (req, res) => {
  * @param {import('express').Request} req
  * @param {import('express').Response} res
  */
-const logout = asyncHandler(async (req, res) => {
-  req.session.destroy(() => {
-    res.clearCookie('connect.sid');
-    return res.redirect('/admin/login');
+const logout = asyncHandler((req, res, next) => {
+  req.logout((err) => {
+    if (err) return next(err);
+
+    return req.session.destroy(() => {
+      res.clearCookie('connect.sid');
+      res.redirect('/admin/login');
+    });
   });
 });
 

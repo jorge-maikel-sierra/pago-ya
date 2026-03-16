@@ -40,7 +40,7 @@ jest.unstable_mockModule('../../src/config/prisma.js', () => ({
   },
 }));
 
-jest.unstable_mockModule('bcrypt', () => ({
+jest.unstable_mockModule('bcryptjs', () => ({
   default: { compare: mockBcryptCompare },
 }));
 

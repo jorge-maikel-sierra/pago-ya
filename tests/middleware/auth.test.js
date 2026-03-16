@@ -194,7 +194,7 @@ describe('verifyToken', () => {
 
 describe('verifySession', () => {
   it('redirects to /admin/login when session is missing', () => {
-    const req = buildReq({ session: undefined });
+    const req = buildReq({ session: undefined, isAuthenticated: jest.fn(() => false) });
     const res = buildRes();
 
     verifySession(req, res, nextFn);
@@ -203,8 +203,8 @@ describe('verifySession', () => {
     expect(nextFn).not.toHaveBeenCalled();
   });
 
-  it('redirects to /admin/login when session.user is missing', () => {
-    const req = buildReq({ session: {} });
+  it('redirects to /admin/login when passport reports unauthenticated', () => {
+    const req = buildReq({ session: {}, isAuthenticated: jest.fn(() => false) });
     const res = buildRes();
 
     verifySession(req, res, nextFn);
@@ -212,14 +212,16 @@ describe('verifySession', () => {
     expect(res.redirect).toHaveBeenCalledWith('/admin/login');
   });
 
-  it('attaches session user to req.user and calls next()', () => {
+  it('keeps req.user when authenticated and calls next()', () => {
     const sessionUser = { id: 'session-user', role: 'ADMIN', firstName: 'Admin' };
-    const req = buildReq({ session: { user: sessionUser } });
+    const req = buildReq({ session: {}, user: sessionUser, isAuthenticated: jest.fn(() => true) });
     const res = buildRes();
 
     verifySession(req, res, nextFn);
 
     expect(req.user).toEqual(sessionUser);
+    expect(res.locals.user).toEqual(sessionUser);
+    expect(res.locals.currentUser).toEqual(sessionUser);
     expect(nextFn).toHaveBeenCalledTimes(1);
     expect(res.redirect).not.toHaveBeenCalled();
   });

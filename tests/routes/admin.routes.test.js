@@ -80,12 +80,11 @@ jest.unstable_mockModule('../../src/controllers/report.controller.js', () => ({
   exportReport: mockExportReport,
 }));
 
-// Mock auth middleware: simula sesión válida si se provee en req
+// Mock auth middleware: simula autenticación de Passport
 const mockVerifySession = jest.fn((req, res, next) => {
-  if (!req.session || !req.session.user) {
+  if (!req.isAuthenticated || !req.isAuthenticated()) {
     return res.redirect('/admin/login');
   }
-  req.user = req.session.user;
   return next();
 });
 

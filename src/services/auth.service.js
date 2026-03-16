@@ -1,5 +1,7 @@
-import bcrypt from 'bcrypt';
+import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
 import prisma from '../config/prisma.js';
+import env from '../config/env.js';
 import * as userService from './user.service.js';
 
 /**
@@ -103,3 +105,23 @@ export const loginAdminUser = async (email, password) => {
   const { passwordHash: _removed, ...sessionUser } = user;
   return sessionUser;
 };
+
+/**
+ * Genera un access token JWT de 1h (configurable por env) usando JWT_SECRET.
+ * @param {string} userId
+ * @returns {string}
+ */
+export const generateAccessToken = (userId) =>
+  jwt.sign({ sub: userId }, process.env.JWT_SECRET || env.JWT_SECRET, {
+    expiresIn: process.env.JWT_EXPIRES_IN || env.JWT_EXPIRES_IN,
+  });
+
+/**
+ * Genera un refresh token JWT de al menos 7d usando JWT_REFRESH_SECRET.
+ * @param {string} userId
+ * @returns {string}
+ */
+export const generateRefreshToken = (userId) =>
+  jwt.sign({ sub: userId }, process.env.JWT_REFRESH_SECRET || env.JWT_REFRESH_SECRET, {
+    expiresIn: process.env.JWT_REFRESH_EXPIRES_IN || env.JWT_REFRESH_EXPIRES_IN,
+  });

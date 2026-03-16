@@ -45,7 +45,7 @@ const envSchema = z.object({
 
   // --- JWT (obligatorio en todos los entornos) ---
   JWT_SECRET: z.string().min(32, 'JWT_SECRET debe tener al menos 32 caracteres'),
-  JWT_EXPIRES_IN: z.string().default('24h'),
+  JWT_EXPIRES_IN: z.string().default('1h'),
   JWT_REFRESH_SECRET: z.string().min(32, 'JWT_REFRESH_SECRET debe tener al menos 32 caracteres'),
   JWT_REFRESH_EXPIRES_IN: z.string().default('7d'),
 

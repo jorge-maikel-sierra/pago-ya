@@ -8,9 +8,10 @@ import compression from 'compression';
 import session from 'express-session';
 import methodOverride from 'method-override';
 import rateLimit from 'express-rate-limit';
+import connectPgSimple from 'connect-pg-simple';
+import passport from './config/passport.js';
 
 import env from './config/env.js';
-import redisClient from './config/redis.js';
 import errorHandler from './middleware/errorHandler.js';
 import paymentRoutes from './routes/payment.routes.js';
 import adminRoutes from './routes/admin.routes.js';
@@ -57,10 +58,6 @@ app.use(
 // --- Compresión gzip ---
 app.use(compression());
 
-// --- Body parsers ---
-app.use(express.json({ limit: '10kb' }));
-app.use(express.urlencoded({ extended: true, limit: '10kb' }));
-
 // --- Method Override (PUT/DELETE desde formularios EJS) ---
 app.use(methodOverride('_method'));
 
@@ -89,17 +86,13 @@ if (env.NODE_ENV === 'production') {
   app.set('trust proxy', 1);
 }
 
-// Usa RedisStore cuando Redis está disponible.
-// Cae a MemoryStore (express-session default) en el plan gratuito sin Redis.
-// ADVERTENCIA: MemoryStore no es apto para múltiples instancias ni para
-// reinicios de servidor — migrar a RedisStore cuando se active Redis.
-
-let sessionStore;
-if (redisClient) {
-  // Importación dinámica para no cargar connect-redis si no hace falta
-  const { default: RedisStore } = await import('connect-redis');
-  sessionStore = new RedisStore({ client: redisClient });
-}
+// Almacena sesiones en PostgreSQL con connect-pg-simple (nunca en memoria).
+const PgSession = connectPgSimple(session);
+const sessionStore = new PgSession({
+  conString: env.DATABASE_URL,
+  tableName: 'session',
+  createTableIfMissing: false, // La tabla debe crearse manualmente antes de arrancar
+});
 
 app.use(
   session({
@@ -115,6 +108,21 @@ app.use(
     },
   }),
 );
+
+// Passport (estrategias Local y JWT)
+app.use(passport.initialize());
+app.use(passport.session());
+
+// --- Body parsers --- (después de session + passport según orden requerido)
+app.use(express.json({ limit: '10kb' }));
+app.use(express.urlencoded({ extended: true, limit: '10kb' }));
+
+// currentUser global para vistas y controladores
+app.use((req, res, next) => {
+  res.locals.currentUser = req.user || null;
+  res.locals.user = req.user || null;
+  next();
+});
 
 // ============================================
 // VIEW ENGINE (EJS)

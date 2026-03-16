@@ -16,7 +16,7 @@ import * as apiResponse from '../utils/apiResponse.js';
  * @param {import('express').Response} res
  */
 export const listUsers = asyncHandler(async (req, res) => {
-  const { organizationId } = req.session.user;
+  const { organizationId } = req.user;
   const { role, isActive, page = 1, limit = 50 } = req.query;
 
   // Pasar page/limit como números al service — el service calcula skip/take internamente
@@ -37,7 +37,7 @@ export const listUsers = asyncHandler(async (req, res) => {
  * @param {import('express').Response} res
  */
 export const getUser = asyncHandler(async (req, res) => {
-  const { organizationId } = req.session.user;
+  const { organizationId } = req.user;
   const { userId } = req.params;
 
   const user = await userService.findUserById(userId, organizationId);
@@ -53,7 +53,7 @@ export const getUser = asyncHandler(async (req, res) => {
  * @param {import('express').Response} res
  */
 export const createUser = asyncHandler(async (req, res) => {
-  const { organizationId } = req.session.user;
+  const { organizationId } = req.user;
 
   // req.body ya fue validado por validate(createUserSchema) en la ruta
   const user = await userService.createUser(organizationId, req.body);
@@ -69,7 +69,7 @@ export const createUser = asyncHandler(async (req, res) => {
  * @param {import('express').Response} res
  */
 export const updateUser = asyncHandler(async (req, res) => {
-  const { organizationId } = req.session.user;
+  const { organizationId } = req.user;
   const { userId } = req.params;
 
   // req.body ya fue validado por validate(updateUserSchema) en la ruta
@@ -85,7 +85,7 @@ export const updateUser = asyncHandler(async (req, res) => {
  * @param {import('express').Response} res
  */
 export const changePassword = asyncHandler(async (req, res) => {
-  const { organizationId } = req.session.user;
+  const { organizationId } = req.user;
   const { userId } = req.params;
 
   // req.body ya fue validado por validate(changePasswordSchema) en la ruta
@@ -109,7 +109,7 @@ export const changePassword = asyncHandler(async (req, res) => {
  * @param {import('express').Response} res
  */
 export const deactivateUser = asyncHandler(async (req, res) => {
-  const { organizationId } = req.session.user;
+  const { organizationId } = req.user;
   const { userId } = req.params;
 
   const user = await userService.deactivateUser(userId, organizationId);
@@ -124,7 +124,7 @@ export const deactivateUser = asyncHandler(async (req, res) => {
  * @param {import('express').Response} res
  */
 export const getUserStats = asyncHandler(async (req, res) => {
-  const { organizationId } = req.session.user;
+  const { organizationId } = req.user;
   const stats = await userService.countUsersByRole(organizationId);
   return apiResponse.success(res, stats);
 });

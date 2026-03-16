@@ -18,7 +18,9 @@ jest.unstable_mockModule('../../src/utils/asyncHandler.js', () => ({
   default: (fn) => fn,
 }));
 
-const { createPayment, syncPaymentsBatch } = await import('../../src/controllers/payment.controller.js');
+const { createPayment, syncPaymentsBatch } = await import(
+  '../../src/controllers/payment.controller.js'
+);
 
 // --- Helpers ---
 const LOAN_ID = '550e8400-e29b-41d4-a716-446655440000';
