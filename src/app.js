@@ -187,7 +187,7 @@ app.use((req, res, next) => {
 // ============================================
 
 // Health check
-app.get('/api/health', (req, res) => {
+app.get('/api/v1/health', (req, res) => {
   res.json({
     success: true,
     message: 'Paga Diario API funcionando correctamente',
@@ -195,8 +195,8 @@ app.get('/api/health', (req, res) => {
     timestamp: new Date().toISOString(),
   });
 });
-app.get('/api/health/db', getDatabaseHealth);
-app.get('/api/health/users', getUsersHealth);
+app.get('/api/v1/health/db', getDatabaseHealth);
+app.get('/api/v1/health/users', getUsersHealth);
 
 app.use('/admin', adminRoutes);
 // Rutas de autenticación públicas (login / register)

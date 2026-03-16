@@ -60,7 +60,7 @@ const registerPaymentHandler = asyncHandler(async (req, res) => {
 });
 
 /**
- * POST /api/v1/payments/batch-sync
+ * POST /api/v1/payments/batch
  * Procesa un array de pagos registrados offline.
  * Retorna un estado por ítem: synced, conflict o error.
  *

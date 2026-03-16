@@ -52,7 +52,7 @@ const batchItemSchema = z.object({
 
 /**
  * Schema de validación para sincronización batch offline.
- * POST /api/v1/payments/batch-sync
+ * POST /api/v1/payments/batch
  */
 const batchSyncSchema = z.object({
   payments: z

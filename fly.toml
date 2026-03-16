@@ -36,7 +36,7 @@ primary_region = 'iad'
     timeout = '10s'
     grace_period = '5s'
     method = 'GET'
-    path = '/api/health'
+    path = '/api/v1/health'
 
 [[vm]]
   memory = '1gb'

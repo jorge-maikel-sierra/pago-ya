@@ -3,7 +3,7 @@ import { getDatabaseStatus, getRecentUsers } from '../services/health.service.js
 import env from '../config/env.js';
 
 /**
- * GET /api/health/db
+ * GET /api/v1/health/db
  * Devuelve el estado de la base de datos: conexión, conteo de entidades,
  * historial de migraciones recientes y listado de tablas del esquema público.
  *
@@ -31,7 +31,7 @@ export const getDatabaseHealth = asyncHandler(async (req, res) => {
 });
 
 /**
- * GET /api/health/users
+ * GET /api/v1/health/users
  * Lista los 10 usuarios más recientes. Solo accesible con clave de debug.
  * SECURITY: Esta ruta debe eliminarse o protegerse con auth real antes de producción.
  *

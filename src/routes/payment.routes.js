@@ -17,7 +17,7 @@ router.post(
 );
 
 router.post(
-  '/batch-sync',
+  '/batch',
   verifyToken,
   authorize('COLLECTOR', 'ADMIN', 'SUPER_ADMIN'),
   validate(z.object({ body: batchSyncSchema })),

@@ -30,7 +30,7 @@ export const listUsers = asyncHandler(async (req, res) => {
 });
 
 /**
- * GET /api/v1/users/:id
+ * GET /api/v1/users/:userId
  * Obtiene el detalle de un usuario por ID.
  *
  * @param {import('express').Request} req
@@ -38,9 +38,9 @@ export const listUsers = asyncHandler(async (req, res) => {
  */
 export const getUser = asyncHandler(async (req, res) => {
   const { organizationId } = req.session.user;
-  const { id } = req.params;
+  const { userId } = req.params;
 
-  const user = await userService.findUserById(id, organizationId);
+  const user = await userService.findUserById(userId, organizationId);
   return apiResponse.success(res, user, 'Usuario obtenido correctamente');
 });
 
@@ -61,7 +61,7 @@ export const createUser = asyncHandler(async (req, res) => {
 });
 
 /**
- * PUT /api/v1/users/:id
+ * PUT /api/v1/users/:userId
  * Actualiza los datos de un usuario.
  * Solo accesible por ADMIN y SUPER_ADMIN.
  *
@@ -70,15 +70,15 @@ export const createUser = asyncHandler(async (req, res) => {
  */
 export const updateUser = asyncHandler(async (req, res) => {
   const { organizationId } = req.session.user;
-  const { id } = req.params;
+  const { userId } = req.params;
 
   // req.body ya fue validado por validate(updateUserSchema) en la ruta
-  const user = await userService.updateUser(id, organizationId, req.body);
+  const user = await userService.updateUser(userId, organizationId, req.body);
   return apiResponse.success(res, user, 'Usuario actualizado correctamente');
 });
 
 /**
- * PATCH /api/v1/users/:id/password
+ * PATCH /api/v1/users/:userId/password
  * Cambia la contraseña de un usuario.
  *
  * @param {import('express').Request} req
@@ -86,17 +86,17 @@ export const updateUser = asyncHandler(async (req, res) => {
  */
 export const changePassword = asyncHandler(async (req, res) => {
   const { organizationId } = req.session.user;
-  const { id } = req.params;
+  const { userId } = req.params;
 
   // req.body ya fue validado por validate(changePasswordSchema) en la ruta
   const { currentPassword, newPassword } = req.body;
 
-  const result = await userService.changePassword(id, organizationId, currentPassword, newPassword);
+  const result = await userService.changePassword(userId, organizationId, currentPassword, newPassword);
   return apiResponse.success(res, result, 'Contraseña actualizada correctamente');
 });
 
 /**
- * DELETE /api/v1/users/:id
+ * DELETE /api/v1/users/:userId
  * Desactiva (soft-delete) un usuario.
  * Solo accesible por ADMIN y SUPER_ADMIN.
  *
@@ -105,9 +105,9 @@ export const changePassword = asyncHandler(async (req, res) => {
  */
 export const deactivateUser = asyncHandler(async (req, res) => {
   const { organizationId } = req.session.user;
-  const { id } = req.params;
+  const { userId } = req.params;
 
-  const user = await userService.deactivateUser(id, organizationId);
+  const user = await userService.deactivateUser(userId, organizationId);
   return apiResponse.success(res, user, 'Usuario desactivado correctamente');
 });
 
