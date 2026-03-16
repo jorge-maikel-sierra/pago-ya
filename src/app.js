@@ -205,10 +205,26 @@ app.use('/api/v1/payments', paymentRoutes);
 app.use('/api/v1/users', userRoutes);
 
 // --- Ruta 404 ---
+// Responde HTML al panel EJS y JSON a la API — igual que el errorHandler.
 app.use((req, res) => {
-  res.status(404).json({
+  const statusCode = 404;
+  const message = `Ruta ${req.originalUrl} no encontrada`;
+
+  if (req.accepts(['html', 'json']) === 'html') {
+    return res.status(statusCode).render('error', {
+      title: `Error ${statusCode}`,
+      statusCode,
+      message,
+      errors: [],
+      stack: undefined,
+      user: req.user || { firstName: '', lastName: '', role: 'ADMIN' },
+      currentPath: '',
+    });
+  }
+
+  return res.status(statusCode).json({
     success: false,
-    message: `Ruta ${req.originalUrl} no encontrada`,
+    message,
   });
 });
 

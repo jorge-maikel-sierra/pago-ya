@@ -73,7 +73,7 @@ const postLogin = asyncHandler(async (req, res) => {
 const logout = asyncHandler(async (req, res) => {
   req.session.destroy(() => {
     res.clearCookie('connect.sid');
-    res.redirect('/admin/login');
+    return res.redirect('/admin/login');
   });
 });
 
