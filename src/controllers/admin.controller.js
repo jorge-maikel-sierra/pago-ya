@@ -1,7 +1,8 @@
+import bcrypt from 'bcryptjs';
 import asyncHandler from '../utils/asyncHandler.js';
 import * as apiResponse from '../utils/apiResponse.js';
 import * as adminService from '../services/admin.service.js';
-import passport from '../config/passport.js';
+import prisma from '../config/prisma.js';
 import * as loanService from '../services/loan.service.js';
 import * as clientService from '../services/client.service.js';
 import * as collectorService from '../services/collector.service.js';
@@ -39,23 +40,39 @@ const getLogin = (req, res) => {
 /**
  * POST /admin/login
  * Valida credenciales, crea la sesión y redirige al dashboard.
+ * Usa Prisma + bcrypt directamente para evitar dependencia de Passport
+ * en el flujo de sesión del panel EJS.
  *
  * @param {import('express').Request} req
  * @param {import('express').Response} res
  */
-const postLogin = (req, res, next) =>
-  passport.authenticate('local', (err, user, info) => {
-    if (err) return next(err);
-    if (!user) {
-      req.session.flashError = info?.message || 'Credenciales inválidas';
-      return req.session.save(() => res.redirect('/admin/login'));
-    }
+const postLogin = asyncHandler(async (req, res) => {
+  const { email, password } = req.body;
 
-    return req.login(user, (loginErr) => {
-      if (loginErr) return next(loginErr);
-      return req.session.save(() => res.redirect('/admin/dashboard'));
-    });
-  })(req, res, next);
+  const user = await prisma.user.findUnique({ where: { email } });
+
+  if (!user || !(await bcrypt.compare(password, user.passwordHash))) {
+    req.session.flashError = 'Credenciales inválidas';
+    return req.session.save(() => res.redirect('/admin/login'));
+  }
+
+  if (!user.isActive) {
+    req.session.flashError = 'Cuenta desactivada. Contacte al administrador';
+    return req.session.save(() => res.redirect('/admin/login'));
+  }
+
+  // Solo ADMIN y SUPER_ADMIN pueden acceder al panel
+  if (!['ADMIN', 'SUPER_ADMIN'].includes(user.role)) {
+    req.session.flashError = 'Acceso denegado. Solo administradores';
+    return req.session.save(() => res.redirect('/admin/login'));
+  }
+
+  // Guardar datos del usuario en sesión sin exponer el hash de contraseña
+  const { passwordHash: _omit, ...sessionUser } = user;
+  req.session.user = sessionUser;
+
+  return req.session.save(() => res.redirect('/admin/dashboard'));
+});
 
 /**
  * DELETE /admin/logout

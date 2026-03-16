@@ -74,17 +74,19 @@ jest.unstable_mockModule('../../src/controllers/admin.controller.js', () => ({
   getNewOrganization: mockGetNewOrganization,
   createOrganization: mockCreateOrganization,
   logout: mockLogout,
+  redirectToDashboard: jest.fn((req, res) => res.redirect('/admin/dashboard')),
 }));
 
 jest.unstable_mockModule('../../src/controllers/report.controller.js', () => ({
   exportReport: mockExportReport,
 }));
 
-// Mock auth middleware: simula autenticación de Passport
+// Mock auth middleware: simula autenticación basada en req.session.user
 const mockVerifySession = jest.fn((req, res, next) => {
-  if (!req.isAuthenticated || !req.isAuthenticated()) {
+  if (!req.session?.user) {
     return res.redirect('/admin/login');
   }
+  req.user = req.session.user;
   return next();
 });
 
