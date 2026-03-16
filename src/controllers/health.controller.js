@@ -15,19 +15,16 @@ import env from '../config/env.js';
 export const getDatabaseHealth = asyncHandler(async (req, res) => {
   const { userCount, orgCount, migrationStatus, migrations, tables } = await getDatabaseStatus();
 
-  return apiResponse.success(
-    res,
-    {
-      connected: true,
-      userCount,
-      organizationCount: orgCount,
-      migrations: {
-        tableExists: migrationStatus.length > 0,
-        recent: migrations,
-      },
-      tables: tables.map((t) => t.table_name),
+  return apiResponse.success(res, {
+    connected: true,
+    userCount,
+    organizationCount: orgCount,
+    migrations: {
+      tableExists: migrationStatus.length > 0,
+      recent: migrations,
     },
-  );
+    tables: tables.map((t) => t.table_name),
+  });
 });
 
 /**

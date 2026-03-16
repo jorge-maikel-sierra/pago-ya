@@ -11,7 +11,14 @@ const verifySession = (req, res, next) => {
     return res.redirect('/admin/login');
   }
 
+  // Adjuntar el usuario autenticado a req.user PARA API/servicios y
+  // a res.locals.user PARA las vistas (EJS). Esto evita que las vistas
+  // dependan de acceder a req directamente y facilita testing.
   req.user = req.session.user;
+  // Asegurar que res.locals exista (los tests pueden simular `res` sin locals)
+  if (!res.locals) res.locals = {};
+  res.locals.user = req.session.user;
+
   return next();
 };
 

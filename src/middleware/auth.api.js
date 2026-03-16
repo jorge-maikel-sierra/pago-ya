@@ -50,6 +50,10 @@ const verifyToken = async (req, res, next) => {
     }
 
     req.user = user;
+    // Exponer el usuario también en res.locals para que las vistas o
+    // middlewares posteriores puedan acceder de forma consistente.
+    if (!res.locals) res.locals = {};
+    res.locals.user = user;
     return next();
   } catch (err) {
     if (err.name === 'TokenExpiredError') {
