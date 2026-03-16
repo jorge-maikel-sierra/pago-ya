@@ -15,10 +15,10 @@ const redisOptions = {
 
 const hasRedis = Boolean(process.env.REDIS_URL || process.env.REDIS_HOST);
 
-let redisClient = null;
+let redisClientMutable = null;
 if (hasRedis) {
   // Preferir REDIS_URL (Fly.io / Railway / Heroku) sobre host/port individuales
-  redisClient = process.env.REDIS_URL
+  redisClientMutable = process.env.REDIS_URL
     ? new Redis(process.env.REDIS_URL, redisOptions)
     : new Redis({
         ...redisOptions,
@@ -27,6 +27,8 @@ if (hasRedis) {
         password: process.env.REDIS_PASSWORD || undefined,
       });
 }
+
+const redisClient = redisClientMutable;
 
 if (redisClient) {
   redisClient.on('connect', () => {

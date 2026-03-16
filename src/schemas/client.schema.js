@@ -55,11 +55,7 @@ const createClientSchema = z.object({
     .optional()
     .or(z.literal('')),
 
-  city: z
-    .string()
-    .trim()
-    .max(100, 'La ciudad no puede superar 100 caracteres')
-    .default('Riohacha'),
+  city: z.string().trim().max(100, 'La ciudad no puede superar 100 caracteres').default('Riohacha'),
 
   referenceContact: z
     .string()

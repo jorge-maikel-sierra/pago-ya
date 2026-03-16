@@ -170,8 +170,8 @@ const createLoan = asyncHandler(async (req, res) => {
   const parsed = createLoanSchema.safeParse({
     clientId: req.body.clientId,
     collectorId: req.body.collectorId,
-    principalAmount: Number.parseFloat(req.body.principalAmount),
-    interestRate: Number.parseFloat(req.body.interestRate),
+    principalAmount: +req.body.principalAmount,
+    interestRate: +req.body.interestRate,
     paymentFrequency: req.body.paymentFrequency,
     amortizationType: req.body.amortizationType,
     numberOfPayments: Number.parseInt(req.body.numberOfPayments, 10),
@@ -227,8 +227,8 @@ const previewLoan = asyncHandler(async (req, res) => {
   const previewSchema = createLoanSchema.omit({ clientId: true, collectorId: true, notes: true });
 
   const parsed = previewSchema.safeParse({
-    principalAmount: Number.parseFloat(req.body.principalAmount),
-    interestRate: Number.parseFloat(req.body.interestRate),
+    principalAmount: +req.body.principalAmount,
+    interestRate: +req.body.interestRate,
     paymentFrequency: req.body.paymentFrequency,
     amortizationType: req.body.amortizationType,
     numberOfPayments: Number.parseInt(req.body.numberOfPayments, 10),
@@ -236,7 +236,10 @@ const previewLoan = asyncHandler(async (req, res) => {
   });
 
   if (!parsed.success) {
-    const errors = parsed.error.errors.map((e) => ({ field: e.path.join('.'), message: e.message }));
+    const errors = parsed.error.errors.map((e) => ({
+      field: e.path.join('.'),
+      message: e.message,
+    }));
     return apiResponse.error(res, 'Datos de previsualización inválidos', 422, errors);
   }
 
@@ -408,10 +411,7 @@ const updateClient = asyncHandler(async (req, res) => {
  * @param {import('express').Response} res
  */
 const restrictClient = asyncHandler(async (req, res) => {
-  const result = await clientService.toggleClientStatus(
-    req.params.id,
-    req.user.organizationId,
-  );
+  const result = await clientService.toggleClientStatus(req.params.id, req.user.organizationId);
 
   req.session.flashSucess = result.wasActive
     ? `Cliente ${result.firstName} ${result.lastName} restringido correctamente`
@@ -685,10 +685,11 @@ const getReports = asyncHandler(async (req, res) => {
   delete req.session.flashSucess;
   delete req.session.flashError;
 
-  const { portfolio, routes } = await reportService.getPortfolioReport(
-    req.user.organizationId,
-    { dateFrom, dateTo, routeId },
-  );
+  const { portfolio, routes } = await reportService.getPortfolioReport(req.user.organizationId, {
+    dateFrom,
+    dateTo,
+    routeId,
+  });
 
   return res.render('pages/reports/index', {
     title: 'Reportes',

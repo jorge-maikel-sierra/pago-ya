@@ -1,7 +1,11 @@
 import asyncHandler from '../utils/asyncHandler.js';
 import * as userService from '../services/user.service.js';
 import * as apiResponse from '../utils/apiResponse.js';
-import { createUserSchema, updateUserSchema, changePasswordSchema } from '../schemas/user.schema.js';
+import {
+  createUserSchema,
+  updateUserSchema,
+  changePasswordSchema,
+} from '../schemas/user.schema.js';
 
 // ============================================
 // User Controller — Pago Ya

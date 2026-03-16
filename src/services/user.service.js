@@ -35,7 +35,8 @@ const USER_PUBLIC_SELECT = {
  * @param {string} id - UUID del usuario (sub del JWT)
  * @returns {Promise<object|null>}
  */
-export const findActiveUserById = async (id) => prisma.user.findUnique({
+export const findActiveUserById = async (id) =>
+  prisma.user.findUnique({
     where: { id },
     select: {
       id: true,
@@ -98,7 +99,8 @@ export const findUserById = async (id, organizationId) =>
  * @param {string} email
  * @returns {Promise<object|null>}
  */
-export const findUserByEmailForAuth = async (email) => prisma.user.findUnique({
+export const findUserByEmailForAuth = async (email) =>
+  prisma.user.findUnique({
     where: { email: email.toLowerCase().trim() },
     select: {
       ...USER_PUBLIC_SELECT,

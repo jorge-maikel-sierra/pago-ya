@@ -125,8 +125,9 @@ app.set('view cache', false); // Deshabilitar cache en desarrollo
 
 // Re-registrar engine EJS con guardia para detectar/limpiar `include` en data
 const originalRenderFile = ejs.renderFile;
-ejs.renderFile = function ejsGuardedRenderFile(...args) {
+ejs.renderFile = function ejsGuardedRenderFile(...rawArgs) {
   // args: [path, data, options?, cb?] como Express los envía
+  const args = [...rawArgs];
   const data = args[1] || {};
 
   let optsIndex = null;

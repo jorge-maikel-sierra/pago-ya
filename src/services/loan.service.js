@@ -269,12 +269,13 @@ export const getNewPaymentFormData = async (organizationId) => {
  *   numberOfPayments: number, disbursementDate: string }} data
  * @returns {object} Resultado del motor de amortización
  */
-export const previewAmortizationSchedule = (data) => generateFixedDailySchedule({
-  principal: data.principalAmount,
-  totalRate: data.interestRate,
-  termDays: data.numberOfPayments,
-  startDate: data.disbursementDate,
-});
+export const previewAmortizationSchedule = (data) =>
+  generateFixedDailySchedule({
+    principal: data.principalAmount,
+    totalRate: data.interestRate,
+    termDays: data.numberOfPayments,
+    startDate: data.disbursementDate,
+  });
 
 /**
  * Obtiene los préstamos activos de una organización con cronograma completo
@@ -283,7 +284,8 @@ export const previewAmortizationSchedule = (data) => generateFixedDailySchedule(
  * @param {string} organizationId - UUID de la organización
  * @returns {Promise<Array>}
  */
-export const findLoansWithScheduleForPDF = async (organizationId) => prisma.loan.findMany({
+export const findLoansWithScheduleForPDF = async (organizationId) =>
+  prisma.loan.findMany({
     where: { organizationId, status: 'ACTIVE' },
     select: {
       id: true,

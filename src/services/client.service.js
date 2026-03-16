@@ -127,7 +127,8 @@ export const findClientById = async (id, organizationId) => {
  * @param {string} organizationId - UUID de la organización
  * @returns {Promise<Array>}
  */
-export const getClientFormRoutes = async (organizationId) => prisma.route.findMany({
+export const getClientFormRoutes = async (organizationId) =>
+  prisma.route.findMany({
     where: { organizationId, isActive: true },
     select: { id: true, name: true },
     orderBy: { name: 'asc' },

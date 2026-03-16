@@ -11,7 +11,8 @@ const PRISMA_ERROR_MAP = Object.freeze({
   },
   P2021: {
     statusCode: 500,
-    message: 'La estructura de la base de datos no coincide con el esquema. Ejecuta las migraciones pendientes.',
+    message:
+      'La estructura de la base de datos no coincide con el esquema. Ejecuta las migraciones pendientes.',
   },
   P2025: {
     statusCode: 404,

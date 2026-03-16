@@ -6,7 +6,8 @@ import prisma from '../config/prisma.js';
  * @param {string} organizationId - UUID de la organización
  * @returns {Promise<Array>}
  */
-export const findRoutes = async (organizationId) => prisma.route.findMany({
+export const findRoutes = async (organizationId) =>
+  prisma.route.findMany({
     where: { organizationId },
     orderBy: { name: 'asc' },
     select: {

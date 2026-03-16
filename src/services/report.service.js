@@ -135,9 +135,7 @@ export const getDailyExportData = async (organizationId, reportDate) => {
  */
 export const findPayments = async (
   organizationId,
-  {
-    dateFrom, dateTo, collectorId, paymentMethod, page = 1, pageSize = 25,
-  } = {},
+  { dateFrom, dateTo, collectorId, paymentMethod, page = 1, pageSize = 25 } = {},
 ) => {
   const currentPage = Math.max(1, page);
   const skip = (currentPage - 1) * pageSize;

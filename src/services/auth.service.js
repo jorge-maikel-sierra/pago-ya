@@ -79,7 +79,7 @@ export const loginAdminUser = async (email, password) => {
     },
   });
 
-  const isValidPassword = user && await bcrypt.compare(password, user.passwordHash);
+  const isValidPassword = user && (await bcrypt.compare(password, user.passwordHash));
   if (!isValidPassword) {
     const err = new Error('Credenciales inválidas');
     err.statusCode = 401;

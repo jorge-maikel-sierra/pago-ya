@@ -11,7 +11,12 @@ import * as userController from '../controllers/user.controller.js';
 const router = Router();
 
 // --- Estadísticas (específico antes de /:id) ---
-router.get('/stats/roles', verifyToken, authorize('SUPER_ADMIN', 'ADMIN'), userController.getUserStats);
+router.get(
+  '/stats/roles',
+  verifyToken,
+  authorize('SUPER_ADMIN', 'ADMIN'),
+  userController.getUserStats,
+);
 
 // --- CRUD de usuarios ---
 router.get('/', verifyToken, authorize('SUPER_ADMIN', 'ADMIN'), userController.listUsers);
@@ -19,6 +24,11 @@ router.get('/:id', verifyToken, authorize('SUPER_ADMIN', 'ADMIN'), userControlle
 router.post('/', verifyToken, authorize('SUPER_ADMIN', 'ADMIN'), userController.createUser);
 router.put('/:id', verifyToken, authorize('SUPER_ADMIN', 'ADMIN'), userController.updateUser);
 router.patch('/:id/password', verifyToken, userController.changePassword);
-router.delete('/:id', verifyToken, authorize('SUPER_ADMIN', 'ADMIN'), userController.deactivateUser);
+router.delete(
+  '/:id',
+  verifyToken,
+  authorize('SUPER_ADMIN', 'ADMIN'),
+  userController.deactivateUser,
+);
 
 export default router;
