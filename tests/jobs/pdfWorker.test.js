@@ -1,13 +1,13 @@
 import { jest, describe, it, expect, beforeEach } from '@jest/globals';
 
 // --- Mocks ---
-const mockFindMany = jest.fn();
+const mockFindLoansWithScheduleForPDF = jest.fn();
 const mockGenerateLoanPDF = jest.fn();
 const mockMkdir = jest.fn();
 const mockWriteFile = jest.fn();
 
-jest.unstable_mockModule('../../src/config/prisma.js', () => ({
-  default: { loan: { findMany: mockFindMany } },
+jest.unstable_mockModule('../../src/services/loan.service.js', () => ({
+  findLoansWithScheduleForPDF: mockFindLoansWithScheduleForPDF,
 }));
 
 jest.unstable_mockModule('../../src/config/redis.js', () => ({
@@ -40,7 +40,6 @@ jest.unstable_mockModule('bullmq', () => ({
 const {
   default: startPdfWorker,
   QUEUE_NAME,
-  fetchLoansWithSchedule,
   transformLoanForPDF,
 } = await import('../../src/jobs/pdfWorker.js');
 
@@ -179,36 +178,9 @@ describe('transformLoanForPDF', () => {
 });
 
 // ============================================
-// fetchLoansWithSchedule
+// findLoansWithScheduleForPDF (movida a loan.service.js)
+// Los tests de esta función viven en tests/services/loan.service.test.js
 // ============================================
-describe('fetchLoansWithSchedule', () => {
-  it('consulta préstamos ACTIVE de la organización', async () => {
-    mockFindMany.mockResolvedValue([sampleLoan]);
-
-    const result = await fetchLoansWithSchedule(ORG_ID);
-
-    expect(mockFindMany).toHaveBeenCalledWith(
-      expect.objectContaining({
-        where: { organizationId: ORG_ID, status: 'ACTIVE' },
-      }),
-    );
-    expect(result).toHaveLength(1);
-  });
-
-  it('retorna array vacío si no hay préstamos', async () => {
-    mockFindMany.mockResolvedValue([]);
-
-    const result = await fetchLoansWithSchedule(ORG_ID);
-
-    expect(result).toEqual([]);
-  });
-
-  it('propaga errores de Prisma', async () => {
-    mockFindMany.mockRejectedValue(new Error('DB timeout'));
-
-    await expect(fetchLoansWithSchedule(ORG_ID)).rejects.toThrow('DB timeout');
-  });
-});
 
 // ============================================
 // startPdfWorker
@@ -279,7 +251,7 @@ describe('startPdfWorker', () => {
   describe('job processing', () => {
     it('crea el directorio uploads si no existe', async () => {
       startPdfWorker();
-      mockFindMany.mockResolvedValue([sampleLoan]);
+      mockFindLoansWithScheduleForPDF.mockResolvedValue([sampleLoan]);
       mockGenerateLoanPDF.mockResolvedValue(Buffer.from('pdf-content'));
 
       await workerProcessor({
@@ -293,7 +265,7 @@ describe('startPdfWorker', () => {
 
     it('genera PDF y guarda archivo para préstamos activos', async () => {
       startPdfWorker();
-      mockFindMany.mockResolvedValue([sampleLoan]);
+      mockFindLoansWithScheduleForPDF.mockResolvedValue([sampleLoan]);
       const fakePdf = Buffer.from('pdf-binary-content');
       mockGenerateLoanPDF.mockResolvedValue(fakePdf);
 
@@ -311,7 +283,7 @@ describe('startPdfWorker', () => {
 
     it('retorna status empty cuando no hay préstamos', async () => {
       startPdfWorker();
-      mockFindMany.mockResolvedValue([]);
+      mockFindLoansWithScheduleForPDF.mockResolvedValue([]);
 
       const result = await workerProcessor({
         data: { organizationId: ORG_ID, reportDate: '2024-01-15' },
@@ -325,7 +297,7 @@ describe('startPdfWorker', () => {
 
     it('usa el organizationId truncado en el nombre del archivo', async () => {
       startPdfWorker();
-      mockFindMany.mockResolvedValue([sampleLoan]);
+      mockFindLoansWithScheduleForPDF.mockResolvedValue([sampleLoan]);
       mockGenerateLoanPDF.mockResolvedValue(Buffer.from('pdf'));
 
       const result = await workerProcessor({
@@ -336,9 +308,9 @@ describe('startPdfWorker', () => {
       expect(result.filename).toContain('2024-01-15');
     });
 
-    it('propaga errores de Prisma', async () => {
+    it('propaga errores del service de préstamos', async () => {
       startPdfWorker();
-      mockFindMany.mockRejectedValue(new Error('Connection refused'));
+      mockFindLoansWithScheduleForPDF.mockRejectedValue(new Error('Connection refused'));
 
       await expect(
         workerProcessor({
@@ -349,7 +321,7 @@ describe('startPdfWorker', () => {
 
     it('propaga errores de generateLoanPDF', async () => {
       startPdfWorker();
-      mockFindMany.mockResolvedValue([sampleLoan]);
+      mockFindLoansWithScheduleForPDF.mockResolvedValue([sampleLoan]);
       mockGenerateLoanPDF.mockRejectedValue(new Error('PDF lib error'));
 
       await expect(
@@ -361,7 +333,7 @@ describe('startPdfWorker', () => {
 
     it('propaga errores de writeFile', async () => {
       startPdfWorker();
-      mockFindMany.mockResolvedValue([sampleLoan]);
+      mockFindLoansWithScheduleForPDF.mockResolvedValue([sampleLoan]);
       mockGenerateLoanPDF.mockResolvedValue(Buffer.from('pdf'));
       mockWriteFile.mockRejectedValue(new Error('EACCES: permission denied'));
 

@@ -4,7 +4,7 @@ import { jest, describe, it, expect, beforeEach } from '@jest/globals';
 const mockFindUniqueOrg = jest.fn();
 const mockFindManySchedules = jest.fn();
 const mockGenerateExcel = jest.fn();
-const mockQueueAdd = jest.fn();
+const mockEnqueuePdfGeneration = jest.fn().mockResolvedValue(undefined);
 
 jest.unstable_mockModule('../../src/config/prisma.js', () => ({
   default: {
@@ -17,21 +17,15 @@ jest.unstable_mockModule('../../src/utils/asyncHandler.js', () => ({
   default: (fn) => fn,
 }));
 
-jest.unstable_mockModule('../../src/config/redis.js', () => ({
-  default: {},
-}));
-
 jest.unstable_mockModule('../../src/services/excel.service.js', () => ({
   generateDailyPortfolioExcel: mockGenerateExcel,
 }));
 
-jest.unstable_mockModule('bullmq', () => ({
-  Queue: jest.fn().mockImplementation(() => ({
-    add: mockQueueAdd,
-  })),
+jest.unstable_mockModule('../../src/services/notification.service.js', () => ({
+  enqueuePdfGeneration: mockEnqueuePdfGeneration,
 }));
 
-const { exportReport, PDF_QUEUE_NAME } = await import('../../src/controllers/report.controller.js');
+const { exportReport } = await import('../../src/controllers/report.controller.js');
 
 // --- Fixtures ---
 const ORG_ID = 'org-550e8400-e29b-41d4-a716-446655440000';
@@ -82,15 +76,6 @@ const createRes = () => {
 
 beforeEach(() => {
   jest.clearAllMocks();
-});
-
-// ============================================
-// Exports
-// ============================================
-describe('report.controller exports', () => {
-  it('exporta PDF_QUEUE_NAME como pdf-generation', () => {
-    expect(PDF_QUEUE_NAME).toBe('pdf-generation');
-  });
 });
 
 // ============================================
@@ -261,26 +246,21 @@ describe('exportReport (xlsx)', () => {
 // ============================================
 describe('exportReport (pdf)', () => {
   it('encola un job en la cola pdf-generation', async () => {
-    mockQueueAdd.mockResolvedValue({ id: 'job-1' });
     const req = createReq({ params: { format: 'pdf' } });
     const res = createRes();
 
     await exportReport(req, res);
 
-    expect(mockQueueAdd).toHaveBeenCalledWith(
-      'generate-portfolio-pdf',
+    expect(mockEnqueuePdfGeneration).toHaveBeenCalledWith(
       expect.objectContaining({
         organizationId: ORG_ID,
         requestedBy: USER_ID,
       }),
-      expect.objectContaining({
-        jobId: expect.stringContaining(`pdf-${ORG_ID}`),
-      }),
+      expect.stringContaining(`pdf-${ORG_ID}`),
     );
   });
 
   it('establece flashSucess en la sesión', async () => {
-    mockQueueAdd.mockResolvedValue({ id: 'job-1' });
     const req = createReq({ params: { format: 'pdf' } });
     const res = createRes();
 
@@ -291,7 +271,6 @@ describe('exportReport (pdf)', () => {
   });
 
   it('redirige a /admin/reports', async () => {
-    mockQueueAdd.mockResolvedValue({ id: 'job-1' });
     const req = createReq({ params: { format: 'pdf' } });
     const res = createRes();
 
@@ -301,22 +280,24 @@ describe('exportReport (pdf)', () => {
   });
 
   it('incluye reportDate en los datos del job', async () => {
-    mockQueueAdd.mockResolvedValue({ id: 'job-1' });
     const req = createReq({ params: { format: 'pdf' } });
     const res = createRes();
 
     await exportReport(req, res);
 
-    const jobData = mockQueueAdd.mock.calls[0][1];
+    const jobData = mockEnqueuePdfGeneration.mock.calls[0][0];
     expect(jobData.reportDate).toMatch(/^\d{4}-\d{2}-\d{2}$/);
   });
 
-  it('propaga errores de la cola', async () => {
-    mockQueueAdd.mockRejectedValue(new Error('Redis unavailable'));
+  it('guarda flashError en sesión si la cola falla y redirige', async () => {
+    mockEnqueuePdfGeneration.mockRejectedValueOnce(new Error('Redis unavailable'));
     const req = createReq({ params: { format: 'pdf' } });
     const res = createRes();
 
-    await expect(exportReport(req, res)).rejects.toThrow('Redis unavailable');
+    await exportReport(req, res);
+
+    expect(req.session.flashError).toBe('Redis unavailable');
+    expect(res.redirect).toHaveBeenCalledWith('/admin/reports');
   });
 });
 
@@ -353,6 +334,6 @@ describe('exportReport (formato inválido)', () => {
     }
 
     expect(mockGenerateExcel).not.toHaveBeenCalled();
-    expect(mockQueueAdd).not.toHaveBeenCalled();
+    expect(mockEnqueuePdfGeneration).not.toHaveBeenCalled();
   });
 });

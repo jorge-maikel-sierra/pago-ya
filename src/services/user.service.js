@@ -29,14 +29,38 @@ const USER_PUBLIC_SELECT = {
 // ──────────────────────────────────────────────
 
 /**
- * Lista todos los usuarios de una organización.
+ * Obtiene un usuario activo por ID para la validación del token JWT.
+ * Retorna null si el usuario no existe — el middleware decide cómo responder.
+ *
+ * @param {string} id - UUID del usuario (sub del JWT)
+ * @returns {Promise<object|null>}
+ */
+export const findActiveUserById = async (id) => {
+  return prisma.user.findUnique({
+    where: { id },
+    select: {
+      id: true,
+      organizationId: true,
+      role: true,
+      firstName: true,
+      lastName: true,
+      email: true,
+      isActive: true,
+    },
+  });
+};
+
+/**
+ * Lista todos los usuarios de una organización con paginación.
+ * El service calcula skip/take para mantener la lógica de paginación fuera del controller.
  *
  * @param {string} organizationId - UUID de la organización
- * @param {{ role?: string, isActive?: boolean, skip?: number, take?: number }} [filters]
+ * @param {{ role?: string, isActive?: boolean, page?: number, limit?: number }} [filters]
  * @returns {Promise<Array>}
  */
 export const findAllUsers = async (organizationId, filters = {}) => {
-  const { role, isActive, skip = 0, take = 50 } = filters;
+  const { role, isActive, page = 1, limit = 50 } = filters;
+  const skip = (page - 1) * limit;
 
   return prisma.user.findMany({
     where: {
@@ -47,7 +71,7 @@ export const findAllUsers = async (organizationId, filters = {}) => {
     select: USER_PUBLIC_SELECT,
     orderBy: [{ role: 'asc' }, { firstName: 'asc' }],
     skip,
-    take,
+    take: limit,
   });
 };
 

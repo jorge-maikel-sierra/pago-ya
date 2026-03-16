@@ -20,15 +20,13 @@ export const listUsers = asyncHandler(async (req, res) => {
   const { organizationId } = req.session.user;
   const { role, isActive, page = 1, limit = 50 } = req.query;
 
-  const skip = (Number(page) - 1) * Number(limit);
-  const filters = {
-    ...(role && { role }),
-    ...(isActive !== undefined && { isActive: isActive === 'true' }),
-    skip,
-    take: Number(limit),
-  };
-
-  const users = await userService.findAllUsers(organizationId, filters);
+  // Pasar page/limit como números al service — el service calcula skip/take internamente
+  const users = await userService.findAllUsers(organizationId, {
+    role,
+    isActive,
+    page: Number(page),
+    limit: Number(limit),
+  });
   return apiResponse.success(res, users, 'Usuarios obtenidos correctamente');
 });
 

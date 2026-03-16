@@ -1,27 +1,8 @@
-import { Queue } from 'bullmq';
 import dayjs from 'dayjs';
 import asyncHandler from '../utils/asyncHandler.js';
-import redisClient from '../config/redis.js';
 import { generateDailyPortfolioExcel } from '../services/excel.service.js';
 import { getDailyExportData } from '../services/report.service.js';
-
-const PDF_QUEUE_NAME = 'pdf-generation';
-
-/**
- * Cola BullMQ para generación de PDFs en segundo plano.
- * Solo se crea cuando Redis está disponible — en plan gratuito es null.
- */
-const pdfQueue = redisClient
-  ? new Queue(PDF_QUEUE_NAME, {
-      connection: redisClient,
-      defaultJobOptions: {
-        attempts: 3,
-        backoff: { type: 'exponential', delay: 2000 },
-        removeOnComplete: { count: 500 },
-        removeOnFail: { count: 1000 },
-      },
-    })
-  : null;
+import { enqueuePdfGeneration } from '../services/notification.service.js';
 
 /**
  * GET /admin/reports/export/:format
@@ -54,25 +35,18 @@ const exportReport = asyncHandler(async (req, res) => {
   }
 
   if (format === 'pdf') {
-    if (!pdfQueue) {
-      req.session.flashError = 'La generación de PDF no está disponible (Redis requerido).';
-      return res.redirect('/admin/reports');
+    try {
+      // Delegar el encolado al service — el controller no instancia colas directamente
+      await enqueuePdfGeneration(
+        { organizationId, reportDate, requestedBy: req.user.id },
+        `pdf-${organizationId}-${reportDate}`,
+      );
+      req.session.flashSucess =
+        'El PDF se está generando en segundo plano. Estará disponible en unos momentos.';
+    } catch (err) {
+      // enqueuePdfGeneration lanza con statusCode 503 cuando Redis no está disponible
+      req.session.flashError = err.message;
     }
-
-    const jobId = `pdf-${organizationId}-${reportDate}`;
-
-    await pdfQueue.add(
-      'generate-portfolio-pdf',
-      {
-        organizationId,
-        reportDate,
-        requestedBy: req.user.id,
-      },
-      { jobId },
-    );
-
-    req.session.flashSucess =
-      'El PDF se está generando en segundo plano. Estará disponible en unos momentos.';
     return res.redirect('/admin/reports');
   }
 
@@ -81,4 +55,4 @@ const exportReport = asyncHandler(async (req, res) => {
   throw err;
 });
 
-export { exportReport, pdfQueue, PDF_QUEUE_NAME };
+export { exportReport };

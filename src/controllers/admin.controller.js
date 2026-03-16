@@ -1,4 +1,3 @@
-import { Queue } from 'bullmq';
 import asyncHandler from '../utils/asyncHandler.js';
 import * as apiResponse from '../utils/apiResponse.js';
 import * as adminService from '../services/admin.service.js';
@@ -10,15 +9,8 @@ import * as organizationService from '../services/organization.service.js';
 import * as routeService from '../services/route.service.js';
 import * as reportService from '../services/report.service.js';
 import * as paymentService from '../services/payment.service.js';
+import { enqueuePaymentReceipt } from '../services/notification.service.js';
 import { createLoanSchema } from '../schemas/loan.schema.js';
-import { generateFixedDailySchedule } from '../engine/amortization.js';
-import redisClient from '../config/redis.js';
-import { QUEUE_NAME } from '../jobs/telegramWorker.js';
-
-// Cola de Telegram solo disponible cuando Redis está configurado
-const telegramQueue = redisClient
-  ? new Queue(QUEUE_NAME, { connection: redisClient })
-  : null;
 
 // ============================================
 // AUTH
@@ -174,14 +166,15 @@ const getNewLoan = asyncHandler(async (req, res) => {
  * @param {import('express').Response} res
  */
 const createLoan = asyncHandler(async (req, res) => {
+  // Zod coerce convierte strings del formulario HTML a number — evita Number() manual
   const parsed = createLoanSchema.safeParse({
     clientId: req.body.clientId,
     collectorId: req.body.collectorId,
-    principalAmount: Number(req.body.principalAmount),
-    interestRate: Number(req.body.interestRate),
+    principalAmount: parseFloat(req.body.principalAmount),
+    interestRate: parseFloat(req.body.interestRate),
     paymentFrequency: req.body.paymentFrequency,
     amortizationType: req.body.amortizationType,
-    numberOfPayments: Number(req.body.numberOfPayments),
+    numberOfPayments: parseInt(req.body.numberOfPayments, 10),
     disbursementDate: req.body.disbursementDate,
     notes: req.body.notes || undefined,
   });
@@ -234,11 +227,11 @@ const previewLoan = asyncHandler(async (req, res) => {
   const previewSchema = createLoanSchema.omit({ clientId: true, collectorId: true, notes: true });
 
   const parsed = previewSchema.safeParse({
-    principalAmount: Number(req.body.principalAmount),
-    interestRate: Number(req.body.interestRate),
+    principalAmount: parseFloat(req.body.principalAmount),
+    interestRate: parseFloat(req.body.interestRate),
     paymentFrequency: req.body.paymentFrequency,
     amortizationType: req.body.amortizationType,
-    numberOfPayments: Number(req.body.numberOfPayments),
+    numberOfPayments: parseInt(req.body.numberOfPayments, 10),
     disbursementDate: req.body.disbursementDate,
   });
 
@@ -247,15 +240,8 @@ const previewLoan = asyncHandler(async (req, res) => {
     return apiResponse.error(res, 'Datos de previsualización inválidos', 422, errors);
   }
 
-  const { principalAmount, interestRate, numberOfPayments, disbursementDate } = parsed.data;
-
-  // Motor financiero puro — sin acceso a BD
-  const result = generateFixedDailySchedule({
-    principal: principalAmount,
-    totalRate: interestRate,
-    termDays: numberOfPayments,
-    startDate: disbursementDate,
-  });
+  // Delegar al service — el controller no llama al engine financiero directamente
+  const result = loanService.previewAmortizationSchedule(parsed.data);
 
   return apiResponse.success(res, result, 'Previsualización generada correctamente');
 });
@@ -644,24 +630,20 @@ const createPayment = asyncHandler(async (req, res) => {
     notes,
   });
 
-  if (telegramQueue) {
-    await telegramQueue.add('send-receipt', {
-      type: 'payment-receipt',
-      data: {
-        paymentId: result.payment.id,
-        chatId: process.env.TELEGRAM_CHAT_ID,
-        clientName: `${result.client.firstName} ${result.client.lastName}`,
-        amount: result.payment.amount,
-        moraAmount: result.payment.moraAmount,
-        totalReceived: result.payment.totalReceived,
-        outstandingBalance: result.loan.outstandingBalance,
-        paidPayments: result.loan.paidPayments,
-        totalInstallments: result.loan.numberOfPayments,
-        collectorName: `${req.user.firstName} ${req.user.lastName}`,
-        collectedAt: result.payment.collectedAt.toISOString(),
-      },
-    });
-  }
+  // Delegar el encolado de notificaciones al service — el controller no instancia colas
+  await enqueuePaymentReceipt({
+    paymentId: result.payment.id,
+    chatId: process.env.TELEGRAM_CHAT_ID,
+    clientName: `${result.client.firstName} ${result.client.lastName}`,
+    amount: result.payment.amount,
+    moraAmount: result.payment.moraAmount,
+    totalReceived: result.payment.totalReceived,
+    outstandingBalance: result.loan.outstandingBalance,
+    paidPayments: result.loan.paidPayments,
+    totalInstallments: result.loan.numberOfPayments,
+    collectorName: `${req.user.firstName} ${req.user.lastName}`,
+    collectedAt: result.payment.collectedAt.toISOString(),
+  });
 
   req.session.flashSucess = 'Pago registrado exitosamente';
   return res.redirect('/admin/payments');

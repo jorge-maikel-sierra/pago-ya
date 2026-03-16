@@ -39,7 +39,8 @@ export const getDatabaseHealth = asyncHandler(async (req, res) => {
  * @returns {Promise<void>}
  */
 export const getUsersHealth = asyncHandler(async (req, res) => {
-  if (req.query.key !== 'debug123') {
+  // SECURITY: Proteger con variable de entorno — nunca hardcodear claves de acceso
+  if (req.query.key !== process.env.DEBUG_KEY) {
     return res.status(403).json({ error: 'No autorizado' });
   }
 

@@ -1,5 +1,5 @@
 import jwt from 'jsonwebtoken';
-import prisma from '../config/prisma.js';
+import { findActiveUserById } from '../services/user.service.js';
 
 /**
  * Middleware de autenticación JWT para la API móvil.
@@ -26,18 +26,8 @@ const verifyToken = async (req, res, next) => {
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-    const user = await prisma.user.findUnique({
-      where: { id: decoded.sub },
-      select: {
-        id: true,
-        organizationId: true,
-        role: true,
-        firstName: true,
-        lastName: true,
-        email: true,
-        isActive: true,
-      },
-    });
+    // Delegar la consulta al service — el middleware no debe acceder a Prisma directamente
+    const user = await findActiveUserById(decoded.sub);
 
     if (!user) {
       return res.status(401).json({

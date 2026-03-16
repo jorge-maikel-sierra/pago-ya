@@ -3,23 +3,15 @@ import { jest, describe, it, expect, beforeEach } from '@jest/globals';
 // --- Mocks ---
 const mockRegisterPayment = jest.fn();
 const mockBatchSync = jest.fn();
-const mockQueueAdd = jest.fn().mockResolvedValue({});
+const mockEnqueuePaymentReceipt = jest.fn().mockResolvedValue(undefined);
 
 jest.unstable_mockModule('../../src/services/payment.service.js', () => ({
   registerPayment: mockRegisterPayment,
   batchSync: mockBatchSync,
 }));
 
-jest.unstable_mockModule('bullmq', () => ({
-  Queue: jest.fn().mockImplementation(() => ({ add: mockQueueAdd })),
-}));
-
-jest.unstable_mockModule('../../src/config/redis.js', () => ({
-  default: {},
-}));
-
-jest.unstable_mockModule('../../src/jobs/telegramWorker.js', () => ({
-  QUEUE_NAME: 'telegram-receipts',
+jest.unstable_mockModule('../../src/services/notification.service.js', () => ({
+  enqueuePaymentReceipt: mockEnqueuePaymentReceipt,
 }));
 
 jest.unstable_mockModule('../../src/utils/asyncHandler.js', () => ({
@@ -118,16 +110,12 @@ describe('registerPaymentHandler', () => {
 
     await registerPaymentHandler(req, res, nextFn);
 
-    expect(mockQueueAdd).toHaveBeenCalledWith(
-      'payment-receipt',
+    expect(mockEnqueuePaymentReceipt).toHaveBeenCalledWith(
       expect.objectContaining({
-        type: 'payment-receipt',
-        data: expect.objectContaining({
-          paymentId: PAYMENT_ID,
-          chatId: '123456',
-          clientName: 'Juan Pérez',
-          collectorName: 'Carlos López',
-        }),
+        paymentId: PAYMENT_ID,
+        chatId: '123456',
+        clientName: 'Juan Pérez',
+        collectorName: 'Carlos López',
       }),
     );
   });
@@ -232,13 +220,9 @@ describe('batchSyncHandler', () => {
 
     await batchSyncHandler(req, res, nextFn);
 
-    expect(mockQueueAdd).toHaveBeenCalledTimes(1);
-    expect(mockQueueAdd).toHaveBeenCalledWith(
-      'payment-receipt-batch',
-      expect.objectContaining({
-        type: 'payment-receipt',
-        data: expect.objectContaining({ paymentId: 'pay-1' }),
-      }),
+    expect(mockEnqueuePaymentReceipt).toHaveBeenCalledTimes(1);
+    expect(mockEnqueuePaymentReceipt).toHaveBeenCalledWith(
+      expect.objectContaining({ paymentId: 'pay-1' }),
     );
   });
 

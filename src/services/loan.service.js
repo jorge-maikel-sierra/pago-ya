@@ -258,3 +258,70 @@ export const getNewPaymentFormData = async (organizationId) => {
 
   return { loans, collectors };
 };
+
+/**
+ * Genera una previsualización del cronograma de amortización sin persistir en BD.
+ * Centraliza la llamada al engine financiero para que el controller no acceda a él directamente.
+ *
+ * @param {{ principalAmount: number, interestRate: number, numberOfPayments: number, disbursementDate: string }} data
+ * @returns {object} Resultado del motor de amortización
+ */
+export const previewAmortizationSchedule = (data) => {
+  return generateFixedDailySchedule({
+    principal: data.principalAmount,
+    totalRate: data.interestRate,
+    termDays: data.numberOfPayments,
+    startDate: data.disbursementDate,
+  });
+};
+
+/**
+ * Obtiene los préstamos activos de una organización con cronograma completo
+ * para la generación de PDFs en segundo plano (uso exclusivo de pdfWorker).
+ *
+ * @param {string} organizationId - UUID de la organización
+ * @returns {Promise<Array>}
+ */
+export const findLoansWithScheduleForPDF = async (organizationId) => {
+  return prisma.loan.findMany({
+    where: { organizationId, status: 'ACTIVE' },
+    select: {
+      id: true,
+      principalAmount: true,
+      interestRate: true,
+      totalAmount: true,
+      totalPaid: true,
+      outstandingBalance: true,
+      moraAmount: true,
+      numberOfPayments: true,
+      paidPayments: true,
+      disbursementDate: true,
+      expectedEndDate: true,
+      status: true,
+      paymentFrequency: true,
+      client: {
+        select: {
+          firstName: true,
+          lastName: true,
+          documentNumber: true,
+        },
+      },
+      collector: {
+        select: { firstName: true, lastName: true },
+      },
+      paymentSchedule: {
+        select: {
+          installmentNumber: true,
+          dueDate: true,
+          amountDue: true,
+          principalDue: true,
+          interestDue: true,
+          amountPaid: true,
+          isPaid: true,
+        },
+        orderBy: { installmentNumber: 'asc' },
+      },
+    },
+    orderBy: { client: { lastName: 'asc' } },
+  });
+};
