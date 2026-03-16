@@ -25,8 +25,8 @@ const createLoanSchema = z.object({
   interestRate: z
     .number({ required_error: 'interestRate es obligatorio' })
     .positive('interestRate debe ser mayor a 0')
-    .max(100, 'interestRate no puede superar 100%')
-    .transform((val) => String(val / 100)),
+    .max(1, 'interestRate no puede superar 1 (100%)')
+    .transform(String),
   numberOfPayments: z
     .number({ required_error: 'numberOfPayments es obligatorio' })
     .int('numberOfPayments debe ser un entero')

@@ -293,7 +293,7 @@ const getClient = asyncHandler(async (req, res) => {
     req.user.organizationId,
   );
 
-  return res.render('pages/client-detail', {
+  return res.render('pages/clients/detail', {
     title: `${client.firstName} ${client.lastName}`,
     user: req.user,
     currentPath: '/admin/clients',

@@ -42,7 +42,10 @@ import { exportReport } from '../controllers/report.controller.js';
 import validate from '../middleware/validate.js';
 import { createOrganizationSchema } from '../schemas/organization.schema.js';
 import { createUserSchema, updateUserSchema } from '../schemas/user.schema.js';
-import { createClientSchema, updateClientSchema } from '../schemas/client.schema.js';
+import {
+  createClientMiddlewareSchema,
+  updateClientMiddlewareSchema,
+} from '../schemas/client.schema.js';
 import { createCollectorSchema, updateCollectorSchema } from '../schemas/collector.schema.js';
 
 const router = Router();
@@ -74,9 +77,9 @@ router.get('/loans/:id', getLoan);
 // --- Clientes ---
 router.get('/clients', getClients);
 router.get('/clients/new', getNewClient);
-router.post('/clients', validate(createClientSchema), createClient);
+router.post('/clients', validate(createClientMiddlewareSchema), createClient);
 router.get('/clients/:id/edit', getEditClient);
-router.put('/clients/:id', validate(updateClientSchema), updateClient);
+router.put('/clients/:id', validate(updateClientMiddlewareSchema), updateClient);
 router.get('/clients/:id', getClient);
 router.put('/clients/:id/restrict', restrictClient);
 

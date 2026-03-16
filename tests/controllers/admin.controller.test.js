@@ -241,7 +241,7 @@ describe('getLogin', () => {
 describe('postLogin', () => {
   const createLoginReq = (overrides = {}) => ({
     body: { email: 'admin@test.com', password: 'secret123' },
-    session: {},
+    session: { save: jest.fn((cb) => cb()) },
     ...overrides,
   });
 

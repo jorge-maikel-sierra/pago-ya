@@ -11,15 +11,31 @@ const mockCreateLoan = jest.fn((req, res) => res.status(200).end());
 const mockGetLoan = jest.fn((req, res) => res.status(200).end());
 const mockGetClients = jest.fn((req, res) => res.status(200).end());
 const mockGetClient = jest.fn((req, res) => res.status(200).end());
+const mockGetNewClient = jest.fn((req, res) => res.status(200).end());
+const mockCreateClient = jest.fn((req, res) => res.status(200).end());
+const mockGetEditClient = jest.fn((req, res) => res.status(200).end());
+const mockUpdateClient = jest.fn((req, res) => res.status(200).end());
 const mockRestrictClient = jest.fn((req, res) => res.status(200).end());
 const mockGetCollectors = jest.fn((req, res) => res.status(200).end());
+const mockGetNewCollector = jest.fn((req, res) => res.status(200).end());
+const mockCreateCollector = jest.fn((req, res) => res.status(200).end());
+const mockGetEditCollector = jest.fn((req, res) => res.status(200).end());
+const mockUpdateCollector = jest.fn((req, res) => res.status(200).end());
 const mockGetPayments = jest.fn((req, res) => res.status(200).end());
+const mockGetNewPayment = jest.fn((req, res) => res.status(200).end());
+const mockCreatePayment = jest.fn((req, res) => res.status(200).end());
 const mockGetRoutes = jest.fn((req, res) => res.status(200).end());
 const mockGetReports = jest.fn((req, res) => res.status(200).end());
 const mockExportReport = jest.fn((req, res) => res.status(200).end());
 const mockGetSettings = jest.fn((req, res) => res.status(200).end());
 const mockGetUsers = jest.fn((req, res) => res.status(200).end());
+const mockGetNewUser = jest.fn((req, res) => res.status(200).end());
+const mockCreateUser = jest.fn((req, res) => res.status(200).end());
+const mockGetEditUser = jest.fn((req, res) => res.status(200).end());
+const mockUpdateUser = jest.fn((req, res) => res.status(200).end());
 const mockGetOrganizations = jest.fn((req, res) => res.status(200).end());
+const mockGetNewOrganization = jest.fn((req, res) => res.status(200).end());
+const mockCreateOrganization = jest.fn((req, res) => res.status(200).end());
 const mockLogout = jest.fn((req, res) => res.status(200).end());
 
 jest.unstable_mockModule('../../src/controllers/admin.controller.js', () => ({
@@ -33,14 +49,30 @@ jest.unstable_mockModule('../../src/controllers/admin.controller.js', () => ({
   getLoan: mockGetLoan,
   getClients: mockGetClients,
   getClient: mockGetClient,
+  getNewClient: mockGetNewClient,
+  createClient: mockCreateClient,
+  getEditClient: mockGetEditClient,
+  updateClient: mockUpdateClient,
   restrictClient: mockRestrictClient,
   getCollectors: mockGetCollectors,
+  getNewCollector: mockGetNewCollector,
+  createCollector: mockCreateCollector,
+  getEditCollector: mockGetEditCollector,
+  updateCollector: mockUpdateCollector,
   getPayments: mockGetPayments,
+  getNewPayment: mockGetNewPayment,
+  createPayment: mockCreatePayment,
   getRoutes: mockGetRoutes,
   getReports: mockGetReports,
   getSettings: mockGetSettings,
   getUsers: mockGetUsers,
+  getNewUser: mockGetNewUser,
+  createUser: mockCreateUser,
+  getEditUser: mockGetEditUser,
+  updateUser: mockUpdateUser,
   getOrganizations: mockGetOrganizations,
+  getNewOrganization: mockGetNewOrganization,
+  createOrganization: mockCreateOrganization,
   logout: mockLogout,
 }));
 
@@ -75,6 +107,11 @@ const mockAuthorize = jest.fn((...roles) => (req, res, next) => {
 
 jest.unstable_mockModule('../../src/middleware/authorize.js', () => ({
   default: mockAuthorize,
+}));
+
+// Mock validate: bypass de validación de schemas en tests de rutas
+jest.unstable_mockModule('../../src/middleware/validate.js', () => ({
+  default: () => (req, res, next) => next(),
 }));
 
 // Importar express y el router DESPUÉS de mockear
