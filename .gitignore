@@ -1,9 +1,12 @@
 # Dependencias
 node_modules/
 
-# Variables de entorno
+# Variables de entorno — ningún archivo .env debe versionarse
 .env
 .env.local
+.env.test
+.env.production
+.env.staging
 .env.*.local
 
 # Build de Tailwind (se genera con build:css)
@@ -11,6 +14,12 @@ public/css/styles.css
 
 # Prisma
 prisma/migrations/**/migration_lock.toml
+# Cliente generado por Prisma (se regenera con `prisma generate`)
+generated/prisma/
+
+# Build
+dist/
+build/
 
 # Logs
 logs/
