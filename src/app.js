@@ -9,6 +9,7 @@ import session from 'express-session';
 import methodOverride from 'method-override';
 import rateLimit from 'express-rate-limit';
 
+import env from './config/env.js';
 import redisClient from './config/redis.js';
 import errorHandler from './middleware/errorHandler.js';
 import paymentRoutes from './routes/payment.routes.js';
@@ -48,7 +49,7 @@ app.use(
 // --- CORS ---
 app.use(
   cors({
-    origin: process.env.CORS_ORIGIN || 'http://localhost:3000',
+    origin: env.CORS_ORIGIN,
     credentials: true,
   }),
 );
@@ -84,7 +85,7 @@ app.use(express.static(join(__dirname, '..', 'public')));
 // Fly.io (y la mayoría de PaaS) terminan TLS en el proxy y reenvían HTTP al
 // contenedor. Sin trust proxy Express no marca la conexión como segura y las
 // cookies con secure:true nunca se envían al navegador.
-if (process.env.NODE_ENV === 'production') {
+if (env.NODE_ENV === 'production') {
   app.set('trust proxy', 1);
 }
 
@@ -103,11 +104,11 @@ if (redisClient) {
 app.use(
   session({
     store: sessionStore, // undefined → MemoryStore automático
-    secret: process.env.SESSION_SECRET,
+    secret: env.SESSION_SECRET,
     resave: false,
     saveUninitialized: false,
     cookie: {
-      secure: process.env.NODE_ENV === 'production',
+      secure: env.NODE_ENV === 'production',
       httpOnly: true,
       maxAge: 1000 * 60 * 60 * 24,
       sameSite: 'lax',
@@ -190,7 +191,7 @@ app.get('/api/health', (req, res) => {
   res.json({
     success: true,
     message: 'Paga Diario API funcionando correctamente',
-    environment: process.env.NODE_ENV,
+    environment: env.NODE_ENV,
     timestamp: new Date().toISOString(),
   });
 });

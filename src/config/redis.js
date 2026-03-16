@@ -1,4 +1,5 @@
 import Redis from 'ioredis';
+import env from './env.js';
 
 /**
  * Crea el cliente Redis si las variables de entorno están configuradas.
@@ -13,18 +14,19 @@ const redisOptions = {
   lazyConnect: true,
 };
 
-const hasRedis = Boolean(process.env.REDIS_URL || process.env.REDIS_HOST);
+const hasRedis = Boolean(env.REDIS_URL || env.REDIS_HOST);
 
 let redisClientMutable = null;
 if (hasRedis) {
   // Preferir REDIS_URL (Fly.io / Railway / Heroku) sobre host/port individuales
-  redisClientMutable = process.env.REDIS_URL
-    ? new Redis(process.env.REDIS_URL, redisOptions)
+  redisClientMutable = env.REDIS_URL
+    ? new Redis(env.REDIS_URL, redisOptions)
     : new Redis({
         ...redisOptions,
-        host: process.env.REDIS_HOST,
-        port: Number(process.env.REDIS_PORT) || 6379,
-        password: process.env.REDIS_PASSWORD || undefined,
+        host: env.REDIS_HOST,
+        // env.REDIS_PORT ya fue convertido a Number por Zod (default 6379)
+        port: env.REDIS_PORT,
+        password: env.REDIS_PASSWORD || undefined,
       });
 }
 

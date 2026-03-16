@@ -2,6 +2,9 @@ import 'dotenv/config';
 import { createServer } from 'node:http';
 import { Server as SocketServer } from 'socket.io';
 
+// env debe importarse antes que cualquier otro módulo del proyecto para que
+// la validación falle rápido (fail-fast) si faltan variables críticas.
+import env from './config/env.js';
 import app from './app.js';
 import prisma from './config/prisma.js';
 import redisClient from './config/redis.js';
@@ -14,8 +17,8 @@ import startPdfWorker from './jobs/pdfWorker.js';
 // CONFIGURACIÓN
 // ============================================
 
-const PORT = Number(process.env.PORT) || 3000;
-const CORS_ORIGIN = process.env.CORS_ORIGIN || 'http://localhost:3000';
+const { PORT } = env;
+const { CORS_ORIGIN } = env;
 
 // ============================================
 // HTTP SERVER + SOCKET.IO
@@ -144,16 +147,16 @@ const startServer = async () => {
 
     // Inicializar bot de Telegram
     initTelegramBot({
-      token: process.env.TELEGRAM_BOT_TOKEN,
-      webhookUrl: process.env.TELEGRAM_WEBHOOK_URL,
-      isProduction: process.env.NODE_ENV === 'production',
+      token: env.TELEGRAM_BOT_TOKEN,
+      webhookUrl: env.TELEGRAM_WEBHOOK_URL,
+      isProduction: env.NODE_ENV === 'production',
     });
     console.log('[Server] ✓ Telegram configurado');
 
     // Levantar servidor HTTP
     httpServer.listen(PORT, () => {
       console.log(`[Server] ✓ Escuchando en http://localhost:${PORT}`);
-      console.log(`[Server]   Entorno: ${process.env.NODE_ENV || 'development'}`);
+      console.log(`[Server]   Entorno: ${env.NODE_ENV}`);
     });
 
     // Puerto ya en uso → mensaje claro en vez de excepción sin capturar

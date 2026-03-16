@@ -6,6 +6,13 @@ import dayjs from 'dayjs';
 const prisma = new PrismaClient();
 const SALT_ROUNDS = 10;
 
+// Las contraseñas por defecto del seed se leen desde variables de entorno para
+// evitar credentials hardcodeadas en el repositorio. Los valores de fallback
+// solo son aceptables en entornos de desarrollo local — en CI/staging configura
+// SEED_ADMIN_PASSWORD y SEED_COLLECTOR_PASSWORD con valores distintos.
+const SEED_ADMIN_PASSWORD = process.env.SEED_ADMIN_PASSWORD ?? 'Admin123!';
+const SEED_COLLECTOR_PASSWORD = process.env.SEED_COLLECTOR_PASSWORD ?? 'Cobrador123!';
+
 /**
  * Genera el hash de una contraseña.
  * @param {string} password
@@ -78,8 +85,8 @@ const seed = async () => {
   // ============================================
   // 2. USUARIOS
   // ============================================
-  const defaultPassword = await hashPassword('Admin123!');
-  const collectorPassword = await hashPassword('Cobrador123!');
+  const defaultPassword = await hashPassword(SEED_ADMIN_PASSWORD);
+  const collectorPassword = await hashPassword(SEED_COLLECTOR_PASSWORD);
 
   const _superAdmin = await prisma.user.create({
     data: {
@@ -134,10 +141,13 @@ const seed = async () => {
   });
 
   console.log('  ✓ Usuarios creados:');
-  console.log('    SUPER_ADMIN: jorge@elpaisa.com / Admin123!');
-  console.log('    ADMIN:       maria@elpaisa.com / Admin123!');
-  console.log('    COLLECTOR:   carlos@elpaisa.com / Cobrador123!');
-  console.log('    COLLECTOR:   andres@elpaisa.com / Cobrador123!');
+  // Imprimir credenciales solo en development — nunca en producción ni CI/CD público
+  if (process.env.NODE_ENV !== 'production') {
+    console.log('    SUPER_ADMIN: jorge@elpaisa.com / (ver SEED_ADMIN_PASSWORD)');
+    console.log('    ADMIN:       maria@elpaisa.com / (ver SEED_ADMIN_PASSWORD)');
+    console.log('    COLLECTOR:   carlos@elpaisa.com / (ver SEED_COLLECTOR_PASSWORD)');
+    console.log('    COLLECTOR:   andres@elpaisa.com / (ver SEED_COLLECTOR_PASSWORD)');
+  }
 
   // ============================================
   // 3. RUTAS
@@ -368,12 +378,15 @@ const seed = async () => {
   // RESUMEN
   // ============================================
   console.log('\n✅ Seed completado exitosamente');
-  console.log('\n📋 Credenciales de acceso al panel admin:');
-  console.log('─'.repeat(45));
-  console.log('  SUPER_ADMIN: jorge@elpaisa.com / Admin123!');
-  console.log('  ADMIN:       maria@elpaisa.com / Admin123!');
-  console.log('─'.repeat(45));
-  console.log('\n🌐 URL: http://localhost:3000/admin/login\n');
+  // Solo mostrar credenciales fuera de producción para evitar leaks en logs de CI/CD
+  if (process.env.NODE_ENV !== 'production') {
+    console.log('\n📋 Credenciales de acceso al panel admin:');
+    console.log('─'.repeat(45));
+    console.log('  SUPER_ADMIN: jorge@elpaisa.com / (valor de SEED_ADMIN_PASSWORD)');
+    console.log('  ADMIN:       maria@elpaisa.com / (valor de SEED_ADMIN_PASSWORD)');
+    console.log('─'.repeat(45));
+    console.log('\n🌐 URL: http://localhost:3000/admin/login\n');
+  }
 };
 
 seed()

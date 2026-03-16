@@ -1,5 +1,6 @@
 import asyncHandler from '../utils/asyncHandler.js';
 import { getDatabaseStatus, getRecentUsers } from '../services/health.service.js';
+import env from '../config/env.js';
 
 /**
  * GET /api/health/db
@@ -39,8 +40,14 @@ export const getDatabaseHealth = asyncHandler(async (req, res) => {
  * @returns {Promise<void>}
  */
 export const getUsersHealth = asyncHandler(async (req, res) => {
-  // SECURITY: Proteger con variable de entorno — nunca hardcodear claves de acceso
-  if (req.query.key !== process.env.DEBUG_KEY) {
+  // Ruta de diagnóstico solo disponible en entornos no productivos y cuando
+  // DEBUG_KEY está definido. Si DEBUG_KEY no existe o la app está en
+  // producción, siempre retorna 403 — evita acceso accidental por variable undefined.
+  const debugKey = env.DEBUG_KEY;
+  if (!debugKey || env.NODE_ENV === 'production') {
+    return res.status(403).json({ error: 'No autorizado' });
+  }
+  if (req.query.key !== debugKey) {
     return res.status(403).json({ error: 'No autorizado' });
   }
 

@@ -1,6 +1,9 @@
 import jwt from 'jsonwebtoken';
 import { findActiveUserById } from '../services/user.service.js';
 
+// JWT_SECRET se lee desde process.env en cada llamada (no desde env.js cacheado)
+// para permitir que los tests lo sobreescriban en beforeEach sin reiniciar el módulo.
+
 /**
  * Middleware de autenticación JWT para la API móvil/REST.
  * Lee el token del header `Authorization: Bearer <token>`,

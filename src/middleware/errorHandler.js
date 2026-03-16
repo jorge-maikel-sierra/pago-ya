@@ -1,6 +1,9 @@
 import { ZodError } from 'zod';
 import { Prisma } from '@prisma/client';
 
+// NODE_ENV se lee desde process.env en cada invocación (no desde env.js cacheado)
+// para que los tests puedan sobreescribir process.env.NODE_ENV en cada caso de prueba.
+
 /**
  * Mapeo de códigos de error de Prisma a respuestas HTTP legibles.
  */
