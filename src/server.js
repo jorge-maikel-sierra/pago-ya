@@ -153,8 +153,11 @@ const startServer = async () => {
     });
     console.log('[Server] ✓ Telegram configurado');
 
-    // Levantar servidor HTTP
-    httpServer.listen(PORT, () => {
+    // Levantar servidor HTTP.
+    // El callback recibe err para no silenciar fallos de arranque inesperados
+    // (p. ej. puerto en uso antes del evento 'error' del socket).
+    httpServer.listen(PORT, (err) => {
+      if (err) throw err;
       console.log(`[Server] ✓ Escuchando en http://localhost:${PORT}`);
       console.log(`[Server]   Entorno: ${env.NODE_ENV}`);
     });
