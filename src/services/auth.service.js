@@ -1,3 +1,4 @@
+import bcrypt from 'bcrypt';
 import prisma from '../config/prisma.js';
 import * as userService from './user.service.js';
 
@@ -71,4 +72,54 @@ export const registerOrganizationAndUser = async (data) => {
     // Re-lanzar otros errores
     throw error;
   }
+};
+
+/**
+ * Valida las credenciales de un usuario administrador y retorna los datos de sesión.
+ * Solo permite el acceso a roles SUPER_ADMIN y ADMIN.
+ *
+ * @param {string} email - Correo electrónico del usuario
+ * @param {string} password - Contraseña en texto plano
+ * @returns {Promise<object>} Datos del usuario sin passwordHash, listos para la sesión
+ * @throws {Error} Con statusCode 401 si las credenciales son inválidas
+ * @throws {Error} Con statusCode 403 si la cuenta está inactiva o el rol no tiene acceso
+ */
+export const loginAdminUser = async (email, password) => {
+  const user = await prisma.user.findUnique({
+    where: { email: email.toLowerCase().trim() },
+    select: {
+      id: true,
+      organizationId: true,
+      role: true,
+      firstName: true,
+      lastName: true,
+      email: true,
+      isActive: true,
+      passwordHash: true,
+    },
+  });
+
+  const isValidPassword = user && await bcrypt.compare(password, user.passwordHash);
+  if (!isValidPassword) {
+    const err = new Error('Credenciales inválidas');
+    err.statusCode = 401;
+    throw err;
+  }
+
+  if (!user.isActive) {
+    const err = new Error('Cuenta desactivada. Contacte al administrador');
+    err.statusCode = 403;
+    throw err;
+  }
+
+  // Solo administradores pueden acceder al panel web
+  const allowedRoles = ['SUPER_ADMIN', 'ADMIN'];
+  if (!allowedRoles.includes(user.role)) {
+    const err = new Error('Acceso denegado. Solo administradores');
+    err.statusCode = 403;
+    throw err;
+  }
+
+  const { passwordHash: _removed, ...sessionUser } = user;
+  return sessionUser;
 };

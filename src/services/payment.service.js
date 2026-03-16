@@ -225,4 +225,148 @@ const batchSync = async (payments, collectorId) => {
   return results;
 };
 
+/**
+ * @typedef {object} AdminPaymentInput
+ * @property {string} loanId
+ * @property {string} amountPaid - Monto total recibido (capital + mora)
+ * @property {string} paymentDate - Fecha del pago (YYYY-MM-DD o ISO)
+ * @property {string} collectorId
+ * @property {string} [paymentMethod]
+ * @property {string} [notes]
+ */
+
+/**
+ * Registra un pago desde el panel administrativo con lógica de distribución
+ * mora/capital en una única transacción Prisma.
+ *
+ * La diferencia con registerPayment (API móvil) es que este endpoint recibe
+ * paymentDate como campo explícito del formulario HTML, mientras que la API
+ * móvil usa offlineCreatedAt para soporte offline.
+ *
+ * @param {AdminPaymentInput} input
+ * @returns {Promise<{ payment: object, loan: object, client: object }>}
+ */
+export const registerAdminPayment = async (input) => {
+  const { loanId, amountPaid, paymentDate, collectorId, paymentMethod, notes } = input;
+  const amountDecimal = new Decimal(amountPaid);
+
+  return prisma.$transaction(async (tx) => {
+    const loan = await tx.loan.findUnique({
+      where: { id: loanId },
+      include: {
+        client: { select: { firstName: true, lastName: true, phone: true } },
+        collector: { select: { firstName: true, lastName: true } },
+        paymentSchedule: {
+          where: { isPaid: false },
+          orderBy: { installmentNumber: 'asc' },
+        },
+      },
+    });
+
+    if (!loan) {
+      const err = new Error('Préstamo no encontrado');
+      err.statusCode = 404;
+      throw err;
+    }
+
+    if (loan.status !== 'ACTIVE') {
+      const err = new Error('El préstamo no está activo');
+      err.statusCode = 409;
+      throw err;
+    }
+
+    const currentOutstanding = new Decimal(loan.outstandingBalance);
+    const currentTotalPaid = new Decimal(loan.totalPaid);
+    const currentMora = new Decimal(loan.moraAmount);
+
+    // Si hay mora pendiente, el pago se aplica primero a la mora
+    let moraPayment = new Decimal(0);
+    let capitalPayment = amountDecimal;
+
+    if (currentMora.gt(0)) {
+      if (amountDecimal.gte(currentMora)) {
+        moraPayment = currentMora;
+        capitalPayment = amountDecimal.minus(currentMora);
+      } else {
+        moraPayment = amountDecimal;
+        capitalPayment = new Decimal(0);
+      }
+    }
+
+    const newOutstanding = Decimal.max(currentOutstanding.minus(capitalPayment), 0);
+    const newTotalPaid = currentTotalPaid.plus(capitalPayment);
+    const newMora = currentMora.minus(moraPayment);
+    const isFullyPaid = newOutstanding.eq(0);
+
+    const updatedLoan = await tx.loan.update({
+      where: { id: loanId },
+      data: {
+        totalPaid: newTotalPaid.toFixed(2),
+        outstandingBalance: newOutstanding.toFixed(2),
+        moraAmount: newMora.toFixed(2),
+        paidPayments: { increment: 1 },
+        status: isFullyPaid ? 'COMPLETED' : 'ACTIVE',
+        ...(isFullyPaid && { actualEndDate: new Date(paymentDate) }),
+      },
+    });
+
+    if (capitalPayment.gt(0) && loan.paymentSchedule.length > 0) {
+      let remaining = capitalPayment;
+
+      const scheduleUpdates = loan.paymentSchedule.reduce((updates, schedule) => {
+        if (remaining.lte(0)) return updates;
+
+        const amountDue = new Decimal(schedule.amountDue);
+        const alreadyPaid = new Decimal(schedule.amountPaid);
+        const pendingOnSchedule = amountDue.minus(alreadyPaid);
+
+        if (pendingOnSchedule.lte(0)) return updates;
+
+        const payThisSchedule = Decimal.min(remaining, pendingOnSchedule);
+        const newAmountPaid = alreadyPaid.plus(payThisSchedule);
+        const isPaid = newAmountPaid.gte(amountDue);
+        remaining = remaining.minus(payThisSchedule);
+
+        updates.push({
+          id: schedule.id,
+          amountPaid: newAmountPaid.toFixed(2),
+          isPaid,
+          paidAt: isPaid ? new Date(paymentDate) : null,
+        });
+
+        return updates;
+      }, []);
+
+      await Promise.all(
+        scheduleUpdates.map((update) =>
+          tx.paymentSchedule.update({
+            where: { id: update.id },
+            data: {
+              amountPaid: update.amountPaid,
+              isPaid: update.isPaid,
+              ...(update.paidAt && { paidAt: update.paidAt }),
+            },
+          }),
+        ),
+      );
+    }
+
+    const payment = await tx.payment.create({
+      data: {
+        loanId,
+        collectorId,
+        amount: capitalPayment.toFixed(2),
+        moraAmount: moraPayment.toFixed(2),
+        totalReceived: amountDecimal.toFixed(2),
+        paymentMethod: paymentMethod || 'CASH',
+        notes: notes || null,
+        collectedAt: new Date(paymentDate),
+        telegramSent: false,
+      },
+    });
+
+    return { payment, loan: updatedLoan, client: loan.client };
+  });
+};
+
 export { processPayment, registerPayment, batchSync };
