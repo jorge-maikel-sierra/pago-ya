@@ -1,11 +1,6 @@
 import asyncHandler from '../utils/asyncHandler.js';
 import * as userService from '../services/user.service.js';
 import * as apiResponse from '../utils/apiResponse.js';
-import {
-  createUserSchema,
-  updateUserSchema,
-  changePasswordSchema,
-} from '../schemas/user.schema.js';
 
 // ============================================
 // User Controller — Pago Ya
@@ -60,10 +55,8 @@ export const getUser = asyncHandler(async (req, res) => {
 export const createUser = asyncHandler(async (req, res) => {
   const { organizationId } = req.session.user;
 
-  // Validación Zod — lanza ZodError si falla (capturado por errorHandler)
-  const data = createUserSchema.shape.body.parse(req.body);
-
-  const user = await userService.createUser(organizationId, data);
+  // req.body ya fue validado por validate(createUserSchema) en la ruta
+  const user = await userService.createUser(organizationId, req.body);
   return apiResponse.success(res, user, 'Usuario creado correctamente', 201);
 });
 
@@ -79,9 +72,8 @@ export const updateUser = asyncHandler(async (req, res) => {
   const { organizationId } = req.session.user;
   const { id } = req.params;
 
-  const data = updateUserSchema.shape.body.parse(req.body);
-
-  const user = await userService.updateUser(id, organizationId, data);
+  // req.body ya fue validado por validate(updateUserSchema) en la ruta
+  const user = await userService.updateUser(id, organizationId, req.body);
   return apiResponse.success(res, user, 'Usuario actualizado correctamente');
 });
 
@@ -96,7 +88,8 @@ export const changePassword = asyncHandler(async (req, res) => {
   const { organizationId } = req.session.user;
   const { id } = req.params;
 
-  const { currentPassword, newPassword } = changePasswordSchema.parse(req.body);
+  // req.body ya fue validado por validate(changePasswordSchema) en la ruta
+  const { currentPassword, newPassword } = req.body;
 
   const result = await userService.changePassword(id, organizationId, currentPassword, newPassword);
   return apiResponse.success(res, result, 'Contraseña actualizada correctamente');
