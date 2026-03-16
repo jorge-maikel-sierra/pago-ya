@@ -37,7 +37,6 @@ export const registerOrganizationAndUser = async (data) => {
     });
 
     return { organization, user };
-
   } catch (error) {
     console.error('[AuthService] Error en proceso de registro:', {
       message: error.message,

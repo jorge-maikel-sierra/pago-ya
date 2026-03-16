@@ -462,6 +462,7 @@ describe('getNewLoan', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockClientFindMany.mockResolvedValue([]);
+    mockUserFindMany.mockResolvedValue([]);
     mockRouteFindMany.mockResolvedValue([]);
   });
 
@@ -510,14 +511,19 @@ describe('getNewLoan', () => {
 // createLoan
 // ============================================
 describe('createLoan', () => {
-  it('establece flashSucess y redirige a /admin/loans', async () => {
-    const req = createReq({ session: {} });
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('establece flashError y redirige a /admin/loans/new cuando los datos son inválidos', async () => {
+    // req.body vacío → safeParse falla → controller redirige con flashError
+    const req = createReq({ body: {}, session: {} });
     const res = createRes();
 
     await createLoan(req, res);
 
-    expect(req.session.flashSucess).toBe('Préstamo creado exitosamente');
-    expect(res.redirect).toHaveBeenCalledWith('/admin/loans');
+    expect(req.session.flashError).toMatch(/Error de validación/);
+    expect(res.redirect).toHaveBeenCalledWith('/admin/loans/new');
   });
 });
 
@@ -593,7 +599,8 @@ describe('getLoan', () => {
     const req = createReq({ params: { id: 'loan-no-existe' }, session: {} });
     const res = createRes();
 
-    await expect(getLoan(req, res)).rejects.toMatchObject({ status: 404 });
+    // El service lanza { statusCode: 404 } (no { status: 404 })
+    await expect(getLoan(req, res)).rejects.toMatchObject({ statusCode: 404 });
   });
 });
 

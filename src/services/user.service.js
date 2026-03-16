@@ -35,8 +35,7 @@ const USER_PUBLIC_SELECT = {
  * @param {string} id - UUID del usuario (sub del JWT)
  * @returns {Promise<object|null>}
  */
-export const findActiveUserById = async (id) => {
-  return prisma.user.findUnique({
+export const findActiveUserById = async (id) => prisma.user.findUnique({
     where: { id },
     select: {
       id: true,
@@ -48,7 +47,6 @@ export const findActiveUserById = async (id) => {
       isActive: true,
     },
   });
-};
 
 /**
  * Lista todos los usuarios de una organización con paginación.
@@ -83,16 +81,16 @@ export const findAllUsers = async (organizationId, filters = {}) => {
  * @param {string} organizationId - UUID de la organización
  * @returns {Promise<object>}
  */
-export const findUserById = async (id, organizationId) => {
+export const findUserById = async (id, organizationId) =>
   // findFirstOrThrow con organizationId garantiza scope multi-tenant
-  return prisma.user.findFirstOrThrow({
+   prisma.user.findFirstOrThrow({
     where: { id, organizationId },
     select: {
       ...USER_PUBLIC_SELECT,
       organization: { select: { id: true, name: true } },
     },
-  });
-};
+  })
+;
 
 /**
  * Busca un usuario por email (para autenticación).
@@ -101,15 +99,13 @@ export const findUserById = async (id, organizationId) => {
  * @param {string} email
  * @returns {Promise<object|null>}
  */
-export const findUserByEmailForAuth = async (email) => {
-  return prisma.user.findUnique({
+export const findUserByEmailForAuth = async (email) => prisma.user.findUnique({
     where: { email: email.toLowerCase().trim() },
     select: {
       ...USER_PUBLIC_SELECT,
       passwordHash: true,
     },
   });
-};
 
 // ──────────────────────────────────────────────
 // Mutaciones

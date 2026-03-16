@@ -138,4 +138,3 @@ export {
   updateClientMiddlewareSchema,
   DOCUMENT_TYPES,
 };
-

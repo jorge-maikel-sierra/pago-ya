@@ -16,6 +16,9 @@ import adminRoutes from './routes/admin.routes.js';
 import userRoutes from './routes/user.routes.js';
 import authRoutes from './routes/auth.routes.js';
 
+// Database health check
+import { getDatabaseHealth, getUsersHealth } from './controllers/health.controller.js';
+
 // --- Rutas de directorio (ESM no tiene __dirname) ---
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -99,7 +102,7 @@ if (redisClient) {
 
 app.use(
   session({
-    store: sessionStore,   // undefined → MemoryStore automático
+    store: sessionStore, // undefined → MemoryStore automático
     secret: process.env.SESSION_SECRET,
     resave: false,
     saveUninitialized: false,
@@ -183,9 +186,6 @@ app.get('/api/health', (req, res) => {
     timestamp: new Date().toISOString(),
   });
 });
-
-// Database health check
-import { getDatabaseHealth, getUsersHealth } from './controllers/health.controller.js';
 app.get('/api/health/db', getDatabaseHealth);
 app.get('/api/health/users', getUsersHealth);
 

@@ -35,7 +35,6 @@ export const postRegister = asyncHandler(async (req, res) => {
     // Esperar a que la sesión se guarde antes de redirigir para que la
     // cookie se envíe correctamente detrás del proxy de Fly.io
     return req.session.save(() => res.redirect('/admin/login'));
-
   } catch (err) {
     if (err.name === 'ZodError') {
       req.session.flashError = err.errors[0].message;
