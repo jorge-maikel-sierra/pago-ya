@@ -246,7 +246,7 @@ const previewLoan = asyncHandler(async (req, res) => {
   // Delegar al service — el controller no llama al engine financiero directamente
   const result = loanService.previewAmortizationSchedule(parsed.data);
 
-  return apiResponse.success(res, result, 'Previsualización generada correctamente');
+  return apiResponse.success(res, result);
 });
 
 // ============================================

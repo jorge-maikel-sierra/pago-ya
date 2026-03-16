@@ -93,12 +93,11 @@ describe('registerPaymentHandler', () => {
     expect(res.status).toHaveBeenCalledWith(201);
     expect(res.json).toHaveBeenCalledWith(
       expect.objectContaining({
-        success: true,
-        message: 'Pago registrado exitosamente',
         data: expect.objectContaining({
           payment: serviceResult.payment,
           loan: expect.objectContaining({ id: LOAN_ID }),
         }),
+        error: null,
       }),
     );
   });
@@ -193,7 +192,6 @@ describe('batchSyncHandler', () => {
     expect(res.status).toHaveBeenCalledWith(200);
     expect(res.json).toHaveBeenCalledWith(
       expect.objectContaining({
-        success: true,
         data: expect.objectContaining({
           results: expect.arrayContaining([
             expect.objectContaining({ localId: 'local-1', status: 'synced' }),
@@ -206,6 +204,7 @@ describe('batchSyncHandler', () => {
             errors: 1,
           },
         }),
+        error: null,
       }),
     );
   });

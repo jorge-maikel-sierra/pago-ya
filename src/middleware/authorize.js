@@ -14,15 +14,17 @@ const authorize =
   (req, res, next) => {
     if (!req.user) {
       return res.status(401).json({
-        success: false,
-        message: 'No autenticado',
+        data: null,
+        meta: null,
+        error: { message: 'No autenticado', code: 'UNAUTHORIZED' },
       });
     }
 
     if (!roles.includes(req.user.role)) {
       return res.status(403).json({
-        success: false,
-        message: 'No tiene permisos para acceder a este recurso',
+        data: null,
+        meta: null,
+        error: { message: 'No tiene permisos para acceder a este recurso', code: 'FORBIDDEN' },
       });
     }
 

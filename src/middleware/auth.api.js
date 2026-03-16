@@ -19,8 +19,9 @@ const verifyToken = async (req, res, next) => {
 
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
     return res.status(401).json({
-      success: false,
-      message: 'Token de autenticación no proporcionado',
+      data: null,
+      meta: null,
+      error: { message: 'Token de autenticación no proporcionado', code: 'UNAUTHORIZED' },
     });
   }
 
@@ -34,15 +35,17 @@ const verifyToken = async (req, res, next) => {
 
     if (!user) {
       return res.status(401).json({
-        success: false,
-        message: 'Usuario no encontrado',
+        data: null,
+        meta: null,
+        error: { message: 'Usuario no encontrado', code: 'UNAUTHORIZED' },
       });
     }
 
     if (!user.isActive) {
       return res.status(403).json({
-        success: false,
-        message: 'Cuenta desactivada. Contacte al administrador',
+        data: null,
+        meta: null,
+        error: { message: 'Cuenta desactivada. Contacte al administrador', code: 'FORBIDDEN' },
       });
     }
 
@@ -51,15 +54,17 @@ const verifyToken = async (req, res, next) => {
   } catch (err) {
     if (err.name === 'TokenExpiredError') {
       return res.status(401).json({
-        success: false,
-        message: 'Token expirado',
+        data: null,
+        meta: null,
+        error: { message: 'Token expirado', code: 'UNAUTHORIZED' },
       });
     }
 
     if (err.name === 'JsonWebTokenError') {
       return res.status(401).json({
-        success: false,
-        message: 'Token inválido',
+        data: null,
+        meta: null,
+        error: { message: 'Token inválido', code: 'UNAUTHORIZED' },
       });
     }
 

@@ -26,7 +26,7 @@ export const listUsers = asyncHandler(async (req, res) => {
     page: Number(page),
     limit: Number(limit),
   });
-  return apiResponse.success(res, users, 'Usuarios obtenidos correctamente');
+  return apiResponse.success(res, users);
 });
 
 /**
@@ -41,7 +41,7 @@ export const getUser = asyncHandler(async (req, res) => {
   const { userId } = req.params;
 
   const user = await userService.findUserById(userId, organizationId);
-  return apiResponse.success(res, user, 'Usuario obtenido correctamente');
+  return apiResponse.success(res, user);
 });
 
 /**
@@ -57,7 +57,7 @@ export const createUser = asyncHandler(async (req, res) => {
 
   // req.body ya fue validado por validate(createUserSchema) en la ruta
   const user = await userService.createUser(organizationId, req.body);
-  return apiResponse.success(res, user, 'Usuario creado correctamente', 201);
+  return apiResponse.success(res, user, 201);
 });
 
 /**
@@ -74,7 +74,7 @@ export const updateUser = asyncHandler(async (req, res) => {
 
   // req.body ya fue validado por validate(updateUserSchema) en la ruta
   const user = await userService.updateUser(userId, organizationId, req.body);
-  return apiResponse.success(res, user, 'Usuario actualizado correctamente');
+  return apiResponse.success(res, user);
 });
 
 /**
@@ -97,7 +97,7 @@ export const changePassword = asyncHandler(async (req, res) => {
     currentPassword,
     newPassword,
   );
-  return apiResponse.success(res, result, 'Contraseña actualizada correctamente');
+  return apiResponse.success(res, result);
 });
 
 /**
@@ -113,7 +113,7 @@ export const deactivateUser = asyncHandler(async (req, res) => {
   const { userId } = req.params;
 
   const user = await userService.deactivateUser(userId, organizationId);
-  return apiResponse.success(res, user, 'Usuario desactivado correctamente');
+  return apiResponse.success(res, user);
 });
 
 /**
@@ -126,5 +126,5 @@ export const deactivateUser = asyncHandler(async (req, res) => {
 export const getUserStats = asyncHandler(async (req, res) => {
   const { organizationId } = req.session.user;
   const stats = await userService.countUsersByRole(organizationId);
-  return apiResponse.success(res, stats, 'Estadísticas de usuarios obtenidas');
+  return apiResponse.success(res, stats);
 });

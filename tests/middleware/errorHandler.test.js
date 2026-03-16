@@ -55,12 +55,16 @@ describe('ZodError handling', () => {
     expect(res.status).toHaveBeenCalledWith(422);
     expect(res.json).toHaveBeenCalledWith(
       expect.objectContaining({
-        success: false,
-        message: 'Error de validación',
-        errors: [
-          { field: 'email', message: 'Requerido' },
-          { field: 'amount', message: 'Debe ser número' },
-        ],
+        data: null,
+        meta: null,
+        error: expect.objectContaining({
+          message: 'Error de validación',
+          code: 'VALIDATION_ERROR',
+          details: [
+            { field: 'email', message: 'Requerido' },
+            { field: 'amount', message: 'Debe ser número' },
+          ],
+        }),
       }),
     );
   });
@@ -113,8 +117,11 @@ describe('Prisma error handling', () => {
     expect(res.status).toHaveBeenCalledWith(409);
     expect(res.json).toHaveBeenCalledWith(
       expect.objectContaining({
-        success: false,
-        message: expect.stringContaining('email'),
+        data: null,
+        error: expect.objectContaining({
+          message: expect.stringContaining('email'),
+          code: 'CONFLICT',
+        }),
       }),
     );
   });
@@ -133,7 +140,11 @@ describe('Prisma error handling', () => {
     expect(res.status).toHaveBeenCalledWith(404);
     expect(res.json).toHaveBeenCalledWith(
       expect.objectContaining({
-        message: 'Registro no encontrado',
+        data: null,
+        error: expect.objectContaining({
+          message: 'Registro no encontrado',
+          code: 'NOT_FOUND',
+        }),
       }),
     );
   });
@@ -208,7 +219,10 @@ describe('Prisma error handling', () => {
 
     expect(res.json).toHaveBeenCalledWith(
       expect.objectContaining({
-        message: expect.stringContaining('email, organizationId'),
+        data: null,
+        error: expect.objectContaining({
+          message: expect.stringContaining('email, organizationId'),
+        }),
       }),
     );
   });
@@ -231,7 +245,10 @@ describe('operational error handling', () => {
 
     expect(res.status).toHaveBeenCalledWith(404);
     expect(res.json).toHaveBeenCalledWith(
-      expect.objectContaining({ message: 'Préstamo no encontrado' }),
+      expect.objectContaining({
+        data: null,
+        error: expect.objectContaining({ message: 'Préstamo no encontrado', code: 'NOT_FOUND' }),
+      }),
     );
   });
 
@@ -264,8 +281,12 @@ describe('generic error handling', () => {
     expect(res.status).toHaveBeenCalledWith(500);
     expect(res.json).toHaveBeenCalledWith(
       expect.objectContaining({
-        success: false,
-        message: 'Error interno del servidor',
+        data: null,
+        meta: null,
+        error: expect.objectContaining({
+          message: 'Error interno del servidor',
+          code: 'INTERNAL_ERROR',
+        }),
       }),
     );
   });
@@ -280,7 +301,7 @@ describe('generic error handling', () => {
     errorHandler(err, req, res, nextFn);
 
     const responseBody = res.json.mock.calls[0][0];
-    expect(responseBody.stack).toBeUndefined();
+    expect(responseBody.error?.stack).toBeUndefined();
   });
 
   it('includes stack in development', () => {
@@ -293,7 +314,7 @@ describe('generic error handling', () => {
     errorHandler(err, req, res, nextFn);
 
     const responseBody = res.json.mock.calls[0][0];
-    expect(responseBody.stack).toBeDefined();
+    expect(responseBody.error?.stack).toBeDefined();
   });
 });
 

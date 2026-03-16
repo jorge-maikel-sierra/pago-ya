@@ -97,10 +97,16 @@ jest.unstable_mockModule('../../src/middleware/auth.js', () => ({
 // Mock authorize: permite roles válidos
 const mockAuthorize = jest.fn((...roles) => (req, res, next) => {
   if (!req.user) {
-    return res.status(401).json({ success: false, message: 'No autenticado' });
+    return res
+      .status(401)
+      .json({ data: null, meta: null, error: { message: 'No autenticado', code: 'UNAUTHORIZED' } });
   }
   if (!roles.includes(req.user.role)) {
-    return res.status(403).json({ success: false, message: 'No autorizado' });
+    return res.status(403).json({
+      data: null,
+      meta: null,
+      error: { message: 'No autorizado', code: 'FORBIDDEN' },
+    });
   }
   return next();
 });

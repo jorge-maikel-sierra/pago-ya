@@ -26,7 +26,9 @@ describe('authorize', () => {
       middleware(req, res, nextFn);
 
       expect(res.status).toHaveBeenCalledWith(401);
-      expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ message: 'No autenticado' }));
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({ error: expect.objectContaining({ message: 'No autenticado' }) }),
+      );
       expect(nextFn).not.toHaveBeenCalled();
     });
   });
@@ -41,7 +43,11 @@ describe('authorize', () => {
 
       expect(res.status).toHaveBeenCalledWith(403);
       expect(res.json).toHaveBeenCalledWith(
-        expect.objectContaining({ message: 'No tiene permisos para acceder a este recurso' }),
+        expect.objectContaining({
+          error: expect.objectContaining({
+            message: 'No tiene permisos para acceder a este recurso',
+          }),
+        }),
       );
       expect(nextFn).not.toHaveBeenCalled();
     });

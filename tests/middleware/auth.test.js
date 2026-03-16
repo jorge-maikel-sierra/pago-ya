@@ -48,7 +48,9 @@ describe('verifyToken', () => {
 
       expect(res.status).toHaveBeenCalledWith(401);
       expect(res.json).toHaveBeenCalledWith(
-        expect.objectContaining({ message: 'Token de autenticación no proporcionado' }),
+        expect.objectContaining({
+          error: expect.objectContaining({ message: 'Token de autenticación no proporcionado' }),
+        }),
       );
       expect(nextFn).not.toHaveBeenCalled();
     });
@@ -80,7 +82,9 @@ describe('verifyToken', () => {
       await verifyToken(req, res, nextFn);
 
       expect(res.status).toHaveBeenCalledWith(401);
-      expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ message: 'Token inválido' }));
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({ error: expect.objectContaining({ message: 'Token inválido' }) }),
+      );
     });
 
     it('returns 401 for an expired token', async () => {
@@ -91,7 +95,9 @@ describe('verifyToken', () => {
       await verifyToken(req, res, nextFn);
 
       expect(res.status).toHaveBeenCalledWith(401);
-      expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ message: 'Token expirado' }));
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({ error: expect.objectContaining({ message: 'Token expirado' }) }),
+      );
     });
   });
 
@@ -110,7 +116,9 @@ describe('verifyToken', () => {
       );
       expect(res.status).toHaveBeenCalledWith(401);
       expect(res.json).toHaveBeenCalledWith(
-        expect.objectContaining({ message: 'Usuario no encontrado' }),
+        expect.objectContaining({
+          error: expect.objectContaining({ message: 'Usuario no encontrado' }),
+        }),
       );
     });
 
@@ -129,7 +137,11 @@ describe('verifyToken', () => {
 
       expect(res.status).toHaveBeenCalledWith(403);
       expect(res.json).toHaveBeenCalledWith(
-        expect.objectContaining({ message: 'Cuenta desactivada. Contacte al administrador' }),
+        expect.objectContaining({
+          error: expect.objectContaining({
+            message: 'Cuenta desactivada. Contacte al administrador',
+          }),
+        }),
       );
     });
   });

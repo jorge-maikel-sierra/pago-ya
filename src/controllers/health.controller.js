@@ -1,5 +1,6 @@
 import asyncHandler from '../utils/asyncHandler.js';
 import { getDatabaseStatus, getRecentUsers } from '../services/health.service.js';
+import * as apiResponse from '../utils/apiResponse.js';
 import env from '../config/env.js';
 
 /**
@@ -14,9 +15,9 @@ import env from '../config/env.js';
 export const getDatabaseHealth = asyncHandler(async (req, res) => {
   const { userCount, orgCount, migrationStatus, migrations, tables } = await getDatabaseStatus();
 
-  return res.json({
-    success: true,
-    database: {
+  return apiResponse.success(
+    res,
+    {
       connected: true,
       userCount,
       organizationCount: orgCount,
@@ -26,8 +27,7 @@ export const getDatabaseHealth = asyncHandler(async (req, res) => {
       },
       tables: tables.map((t) => t.table_name),
     },
-    timestamp: new Date().toISOString(),
-  });
+  );
 });
 
 /**
@@ -45,19 +45,24 @@ export const getUsersHealth = asyncHandler(async (req, res) => {
   // producción, siempre retorna 403 — evita acceso accidental por variable undefined.
   const debugKey = env.DEBUG_KEY;
   if (!debugKey || env.NODE_ENV === 'production') {
-    return res.status(403).json({ error: 'No autorizado' });
+    return res.status(403).json({
+      data: null,
+      meta: null,
+      error: { message: 'No autorizado', code: 'FORBIDDEN' },
+    });
   }
   if (req.query.key !== debugKey) {
-    return res.status(403).json({ error: 'No autorizado' });
+    return res.status(403).json({
+      data: null,
+      meta: null,
+      error: { message: 'No autorizado', code: 'FORBIDDEN' },
+    });
   }
 
   const { users, total } = await getRecentUsers();
 
-  return res.json({
-    success: true,
-    users,
+  return apiResponse.success(res, { users }, 200, {
     count: users.length,
     total,
-    timestamp: new Date().toISOString(),
   });
 });

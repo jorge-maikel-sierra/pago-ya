@@ -51,24 +51,41 @@ const wantsHtml = (req) => req.accepts(['html', 'json']) === 'html';
  * @param {Array} [errors=[]]
  * @param {string} [stack=undefined]
  */
-const sendError = (res, req, statusCode, message, errors = [], stack = undefined) => {
+const sendError = (res, req, statusCode, message, details = [], stack = undefined) => {
   if (wantsHtml(req)) {
     return res.status(statusCode).render('error', {
       title: `Error ${statusCode}`,
       statusCode,
       message,
-      errors,
+      errors: details,
       stack: process.env.NODE_ENV === 'development' ? stack : undefined,
       user: req.user || { firstName: '', lastName: '', role: 'ADMIN' },
       currentPath: '',
     });
   }
 
+  // Mapear statusCode a un código de error semántico para la estructura REST estándar
+  const HTTP_CODE_MAP = {
+    400: 'BAD_REQUEST',
+    401: 'UNAUTHORIZED',
+    403: 'FORBIDDEN',
+    404: 'NOT_FOUND',
+    409: 'CONFLICT',
+    422: 'VALIDATION_ERROR',
+    500: 'INTERNAL_ERROR',
+    503: 'SERVICE_UNAVAILABLE',
+  };
+  const code = HTTP_CODE_MAP[statusCode] ?? 'INTERNAL_ERROR';
+
   return res.status(statusCode).json({
-    success: false,
-    message,
-    ...(errors.length > 0 && { errors }),
-    ...(process.env.NODE_ENV === 'development' && stack && { stack }),
+    data: null,
+    meta: null,
+    error: {
+      message,
+      code,
+      ...(details.length > 0 && { details }),
+      ...(process.env.NODE_ENV === 'development' && stack && { stack }),
+    },
   });
 };
 

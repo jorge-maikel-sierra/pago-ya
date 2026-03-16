@@ -54,7 +54,6 @@ const registerPaymentHandler = asyncHandler(async (req, res) => {
         status: result.loan.status,
       },
     },
-    'Pago registrado exitosamente',
     201,
   );
 });
@@ -107,7 +106,7 @@ const batchSyncHandler = asyncHandler(async (req, res) => {
     errors: results.filter((r) => r.status === 'error').length,
   };
 
-  return success(res, { results, summary }, 'Sincronización completada');
+  return success(res, { results, summary });
 });
 
 export { registerPaymentHandler, batchSyncHandler };

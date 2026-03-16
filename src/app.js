@@ -189,20 +189,28 @@ app.use((req, res, next) => {
 // Health check
 app.get('/api/v1/health', (req, res) => {
   res.json({
-    success: true,
-    message: 'Paga Diario API funcionando correctamente',
-    environment: env.NODE_ENV,
-    timestamp: new Date().toISOString(),
+    data: {
+      status: 'ok',
+      environment: env.NODE_ENV,
+    },
+    meta: { timestamp: new Date().toISOString() },
+    error: null,
   });
 });
 app.get('/api/v1/health/db', getDatabaseHealth);
 app.get('/api/v1/health/users', getUsersHealth);
 
-app.use('/admin', adminRoutes);
-// authRoutes expone /register — se monta en raíz porque también es la ruta base de la app
-app.use('/', authRoutes);
+// API REST — montadas de más específico a más genérico dentro del prefijo /api/v1
 app.use('/api/v1/payments', paymentRoutes);
 app.use('/api/v1/users', userRoutes);
+
+// Panel de administración (MVC/EJS)
+app.use('/admin', adminRoutes);
+
+// authRoutes se monta en '/' porque gestiona /register (raíz de la app).
+// Se coloca DESPUÉS de todas las rutas /api/v1 y /admin para evitar que
+// el router genérico intercepte solicitudes que ya tienen un handler específico.
+app.use('/', authRoutes);
 
 // --- Ruta catch-all 404 ---
 // Debe ser la ÚLTIMA ruta registrada (antes del errorHandler).
@@ -225,8 +233,9 @@ app.use('*', (req, res) => {
   }
 
   return res.status(statusCode).json({
-    success: false,
-    message,
+    data: null,
+    meta: null,
+    error: { message, code: 'NOT_FOUND' },
   });
 });
 
