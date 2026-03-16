@@ -83,14 +83,13 @@ export const findAllUsers = async (organizationId, filters = {}) => {
  */
 export const findUserById = async (id, organizationId) =>
   // findFirstOrThrow con organizationId garantiza scope multi-tenant
-   prisma.user.findFirstOrThrow({
+  prisma.user.findFirstOrThrow({
     where: { id, organizationId },
     select: {
       ...USER_PUBLIC_SELECT,
       organization: { select: { id: true, name: true } },
     },
-  })
-;
+  });
 
 /**
  * Busca un usuario por email (para autenticación).
@@ -115,7 +114,8 @@ export const findUserByEmailForAuth = async (email) => prisma.user.findUnique({
  * Crea un nuevo usuario en la organización.
  *
  * @param {string} organizationId - UUID de la organización
- * @param {{ firstName: string, lastName: string, email: string, password: string, role: string, phone?: string }} data
+ * @param {{ firstName: string, lastName: string, email: string,
+ *   password: string, role: string, phone?: string }} data
  * @returns {Promise<object>} Usuario creado (sin passwordHash)
  */
 export const createUser = async (organizationId, data) => {
@@ -138,7 +138,8 @@ export const createUser = async (organizationId, data) => {
  *
  * @param {string} id - UUID del usuario
  * @param {string} organizationId - UUID de la organización (scope de seguridad)
- * @param {{ firstName?: string, lastName?: string, phone?: string, role?: string, isActive?: boolean }} data
+ * @param {{ firstName?: string, lastName?: string, phone?: string,
+ *   role?: string, isActive?: boolean }} data
  * @returns {Promise<object>} Usuario actualizado
  */
 export const updateUser = async (id, organizationId, data) => {

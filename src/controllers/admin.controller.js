@@ -170,11 +170,11 @@ const createLoan = asyncHandler(async (req, res) => {
   const parsed = createLoanSchema.safeParse({
     clientId: req.body.clientId,
     collectorId: req.body.collectorId,
-    principalAmount: parseFloat(req.body.principalAmount),
-    interestRate: parseFloat(req.body.interestRate),
+    principalAmount: Number.parseFloat(req.body.principalAmount),
+    interestRate: Number.parseFloat(req.body.interestRate),
     paymentFrequency: req.body.paymentFrequency,
     amortizationType: req.body.amortizationType,
-    numberOfPayments: parseInt(req.body.numberOfPayments, 10),
+    numberOfPayments: Number.parseInt(req.body.numberOfPayments, 10),
     disbursementDate: req.body.disbursementDate,
     notes: req.body.notes || undefined,
   });
@@ -227,11 +227,11 @@ const previewLoan = asyncHandler(async (req, res) => {
   const previewSchema = createLoanSchema.omit({ clientId: true, collectorId: true, notes: true });
 
   const parsed = previewSchema.safeParse({
-    principalAmount: parseFloat(req.body.principalAmount),
-    interestRate: parseFloat(req.body.interestRate),
+    principalAmount: Number.parseFloat(req.body.principalAmount),
+    interestRate: Number.parseFloat(req.body.interestRate),
     paymentFrequency: req.body.paymentFrequency,
     amortizationType: req.body.amortizationType,
-    numberOfPayments: parseInt(req.body.numberOfPayments, 10),
+    numberOfPayments: Number.parseInt(req.body.numberOfPayments, 10),
     disbursementDate: req.body.disbursementDate,
   });
 

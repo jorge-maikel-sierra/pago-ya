@@ -128,12 +128,17 @@ export const getDailyExportData = async (organizationId, reportDate) => {
  * Obtiene los pagos de una organización con filtros y paginación.
  *
  * @param {string} organizationId - UUID de la organización
- * @param {{ dateFrom?: string, dateTo?: string, collectorId?: string, paymentMethod?: string, page?: number, pageSize?: number }} [filters]
- * @returns {Promise<{ payments: Array, collectors: Array, total: number, page: number, totalPages: number }>}
+ * @param {{ dateFrom?: string, dateTo?: string, collectorId?: string,
+ *   paymentMethod?: string, page?: number, pageSize?: number }} [filters]
+ * @returns {Promise<{ payments: Array, collectors: Array, total: number,
+ *   page: number, totalPages: number }>}
  */
-export const findPayments = async (organizationId, {
-  dateFrom, dateTo, collectorId, paymentMethod, page = 1, pageSize = 25,
-} = {}) => {
+export const findPayments = async (
+  organizationId,
+  {
+    dateFrom, dateTo, collectorId, paymentMethod, page = 1, pageSize = 25,
+  } = {},
+) => {
   const currentPage = Math.max(1, page);
   const skip = (currentPage - 1) * pageSize;
 

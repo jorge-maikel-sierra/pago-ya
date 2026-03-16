@@ -161,7 +161,8 @@ export const findOrgUserById = async (id, organizationId) => {
  * Crea un nuevo usuario en la organización con hash de contraseña.
  *
  * @param {string} organizationId - UUID de la organización
- * @param {{ firstName: string, lastName: string, email: string, phone?: string, role: string, password: string, isActive?: boolean }} data
+ * @param {{ firstName: string, lastName: string, email: string,
+ *   phone?: string, role: string, password: string, isActive?: boolean }} data
  * @returns {Promise<import('@prisma/client').User>}
  */
 export const createOrgUser = async (organizationId, data) => {
@@ -199,7 +200,8 @@ export const createOrgUser = async (organizationId, data) => {
  *
  * @param {string} id - UUID del usuario
  * @param {string} organizationId - UUID de la organización
- * @param {{ firstName: string, lastName: string, email: string, phone?: string, role: string, password?: string, isActive?: boolean }} data
+ * @param {{ firstName: string, lastName: string, email: string,
+ *   phone?: string, role: string, password?: string, isActive?: boolean }} data
  * @returns {Promise<import('@prisma/client').User>}
  */
 export const updateOrgUser = async (id, organizationId, data) => {

@@ -325,5 +325,10 @@ export const toggleClientStatus = async (id, organizationId) => {
     data: { isActive: !client.isActive },
   });
 
-  return { id: client.id, wasActive: client.isActive, firstName: client.firstName, lastName: client.lastName };
+  return {
+    id: client.id,
+    wasActive: client.isActive,
+    firstName: client.firstName,
+    lastName: client.lastName,
+  };
 };

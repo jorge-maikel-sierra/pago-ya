@@ -127,13 +127,20 @@ app.set('view cache', false); // Deshabilitar cache en desarrollo
 const originalRenderFile = ejs.renderFile;
 ejs.renderFile = function ejsGuardedRenderFile(...args) {
   // args: [path, data, options?, cb?] como Express los envía
-  const path = args[0];
   const data = args[1] || {};
-  const optsIndex = args.length === 4 ? 2 : typeof args[2] === 'object' ? 2 : null;
+
+  let optsIndex = null;
+  if (args.length === 4) {
+    optsIndex = 2;
+  } else if (typeof args[2] === 'object') {
+    optsIndex = 2;
+  }
+
   if (optsIndex !== null) {
-    args[optsIndex] = args[optsIndex] || {};
-    if (typeof args[optsIndex].legacyInclude === 'undefined') args[optsIndex].legacyInclude = true;
-    if (typeof args[optsIndex].client === 'undefined') args[optsIndex].client = false;
+    const opts = args[optsIndex] || {};
+    if (typeof opts.legacyInclude === 'undefined') opts.legacyInclude = true;
+    if (typeof opts.client === 'undefined') opts.client = false;
+    args[optsIndex] = opts;
   } else {
     // No options provided: inject one to force legacyInclude
     args.splice(2, 0, { legacyInclude: true, client: false });
@@ -154,20 +161,20 @@ app.engine('ejs', ejs.renderFile);
 app.use((req, res, next) => {
   const originalRender = res.render.bind(res);
 
-  res.render = (view, options = {}, callback) => {
+  res.render = (view, options, callback) => {
+    const safeOptions = options || {};
     const hadLocalsInclude =
       Object.prototype.hasOwnProperty.call(res.locals, 'include') || 'include' in res.locals;
     const hadOptionsInclude =
-      options && (Object.prototype.hasOwnProperty.call(options, 'include') || 'include' in options);
+      Object.prototype.hasOwnProperty.call(safeOptions, 'include') || 'include' in safeOptions;
 
     if (hadLocalsInclude) {
       delete res.locals.include;
     }
     if (hadOptionsInclude) {
-      // eslint-disable-next-line no-param-reassign
-      delete options.include;
+      delete safeOptions.include;
     }
-    return originalRender(view, options, callback);
+    return originalRender(view, safeOptions, callback);
   };
 
   next();

@@ -15,16 +15,18 @@ const redisOptions = {
 
 const hasRedis = Boolean(process.env.REDIS_URL || process.env.REDIS_HOST);
 
-const redisClient = hasRedis
-  ? process.env.REDIS_URL
+let redisClient = null;
+if (hasRedis) {
+  // Preferir REDIS_URL (Fly.io / Railway / Heroku) sobre host/port individuales
+  redisClient = process.env.REDIS_URL
     ? new Redis(process.env.REDIS_URL, redisOptions)
     : new Redis({
         ...redisOptions,
         host: process.env.REDIS_HOST,
         port: Number(process.env.REDIS_PORT) || 6379,
         password: process.env.REDIS_PASSWORD || undefined,
-      })
-  : null;
+      });
+}
 
 if (redisClient) {
   redisClient.on('connect', () => {

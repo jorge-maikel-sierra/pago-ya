@@ -74,7 +74,8 @@ export const findCollectorById = async (id, organizationId) => {
  * El rol se fuerza a COLLECTOR independientemente de los datos recibidos.
  *
  * @param {string} organizationId - UUID de la organización
- * @param {{ firstName: string, lastName: string, email: string, phone?: string, password: string }} data
+ * @param {{ firstName: string, lastName: string, email: string,
+ *   phone?: string, password: string }} data
  * @returns {Promise<import('@prisma/client').User>}
  */
 export const createCollector = async (organizationId, data) => {
@@ -112,11 +113,14 @@ export const createCollector = async (organizationId, data) => {
  *
  * @param {string} id - UUID del cobrador
  * @param {string} organizationId - UUID de la organización
- * @param {{ firstName: string, lastName: string, email: string, phone?: string, password?: string, isActive?: boolean }} data
+ * @param {{ firstName: string, lastName: string, email: string,
+ *   phone?: string, password?: string, isActive?: boolean }} data
  * @returns {Promise<import('@prisma/client').User>}
  */
 export const updateCollector = async (id, organizationId, data) => {
-  await prisma.user.findFirstOrThrow({ where: { id, organizationId, role: 'COLLECTOR' } });
+  await prisma.user.findFirstOrThrow({
+    where: { id, organizationId, role: 'COLLECTOR' },
+  });
 
   const { firstName, lastName, email, phone, password, isActive } = data;
 

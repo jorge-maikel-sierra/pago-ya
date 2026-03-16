@@ -160,7 +160,9 @@ export const getNewLoanFormData = async (organizationId) => {
  * Crea un préstamo junto con su cronograma de amortización en una transacción.
  *
  * @param {string} organizationId - UUID de la organización
- * @param {{ clientId: string, collectorId: string, principalAmount: number, interestRate: number, numberOfPayments: number, disbursementDate: string, paymentFrequency: string, amortizationType: string, notes?: string }} data
+ * @param {{ clientId: string, collectorId: string, principalAmount: number,
+ *   interestRate: number, numberOfPayments: number, disbursementDate: string,
+ *   paymentFrequency: string, amortizationType: string, notes?: string }} data
  * @returns {Promise<import('@prisma/client').Loan>}
  */
 export const createLoan = async (organizationId, data) => {
@@ -263,15 +265,16 @@ export const getNewPaymentFormData = async (organizationId) => {
  * Genera una previsualización del cronograma de amortización sin persistir en BD.
  * Centraliza la llamada al engine financiero para que el controller no acceda a él directamente.
  *
- * @param {{ principalAmount: number, interestRate: number, numberOfPayments: number, disbursementDate: string }} data
+ * @param {{ principalAmount: number, interestRate: number,
+ *   numberOfPayments: number, disbursementDate: string }} data
  * @returns {object} Resultado del motor de amortización
  */
 export const previewAmortizationSchedule = (data) => generateFixedDailySchedule({
-    principal: data.principalAmount,
-    totalRate: data.interestRate,
-    termDays: data.numberOfPayments,
-    startDate: data.disbursementDate,
-  });
+  principal: data.principalAmount,
+  totalRate: data.interestRate,
+  termDays: data.numberOfPayments,
+  startDate: data.disbursementDate,
+});
 
 /**
  * Obtiene los préstamos activos de una organización con cronograma completo
