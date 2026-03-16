@@ -4,7 +4,7 @@ import { verifyToken } from '../middleware/auth.js';
 import authorize from '../middleware/authorize.js';
 import validate from '../middleware/validate.js';
 import { registerPaymentSchema, batchSyncSchema } from '../validators/payment.validator.js';
-import { registerPaymentHandler, batchSyncHandler } from '../controllers/payment.controller.js';
+import { createPayment, syncPaymentsBatch } from '../controllers/payment.controller.js';
 
 const router = Router();
 
@@ -13,7 +13,7 @@ router.post(
   verifyToken,
   authorize('COLLECTOR', 'ADMIN', 'SUPER_ADMIN'),
   validate(z.object({ body: registerPaymentSchema })),
-  registerPaymentHandler,
+  createPayment,
 );
 
 router.post(
@@ -21,7 +21,7 @@ router.post(
   verifyToken,
   authorize('COLLECTOR', 'ADMIN', 'SUPER_ADMIN'),
   validate(z.object({ body: batchSyncSchema })),
-  batchSyncHandler,
+  syncPaymentsBatch,
 );
 
 export default router;

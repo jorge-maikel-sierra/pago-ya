@@ -82,6 +82,15 @@ const logout = asyncHandler(async (req, res) => {
 // ============================================
 
 /**
+ * GET /admin
+ * Redirige la raíz del panel al dashboard principal.
+ *
+ * @param {import('express').Request} req
+ * @param {import('express').Response} res
+ */
+const redirectToDashboard = (req, res) => res.redirect('/admin/dashboard');
+
+/**
  * GET /admin/dashboard
  * Consulta los KPIs de la organización y renderiza el dashboard.
  *
@@ -918,6 +927,7 @@ export {
   getLogin,
   postLogin,
   logout,
+  redirectToDashboard,
   getDashboard,
   getLoans,
   getNewLoan,

@@ -4,6 +4,7 @@ import authorize from '../middleware/authorize.js';
 import {
   getLogin,
   postLogin,
+  redirectToDashboard,
   getDashboard,
   getRoutes,
   getSettings,
@@ -43,7 +44,7 @@ router.post('/login', postLogin);
 router.use(verifySession);
 router.use(authorize('SUPER_ADMIN', 'ADMIN'));
 
-router.get('/', (req, res) => res.redirect('/admin/dashboard'));
+router.get('/', redirectToDashboard);
 router.get('/dashboard', getDashboard);
 
 // --- Recursos del panel (cada uno con su Router propio) ---

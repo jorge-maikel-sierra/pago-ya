@@ -10,7 +10,7 @@ import { enqueuePaymentReceipt } from '../services/notification.service.js';
  * @param {import('express').Request} req
  * @param {import('express').Response} res
  */
-const registerPaymentHandler = asyncHandler(async (req, res) => {
+const createPayment = asyncHandler(async (req, res) => {
   const result = await registerPayment({
     ...req.body,
     collectorId: req.user.id,
@@ -66,7 +66,7 @@ const registerPaymentHandler = asyncHandler(async (req, res) => {
  * @param {import('express').Request} req
  * @param {import('express').Response} res
  */
-const batchSyncHandler = asyncHandler(async (req, res) => {
+const syncPaymentsBatch = asyncHandler(async (req, res) => {
   const { payments } = req.body;
 
   const results = await batchSync(payments, req.user.id);
@@ -109,4 +109,4 @@ const batchSyncHandler = asyncHandler(async (req, res) => {
   return success(res, { results, summary });
 });
 
-export { registerPaymentHandler, batchSyncHandler };
+export { createPayment, syncPaymentsBatch };

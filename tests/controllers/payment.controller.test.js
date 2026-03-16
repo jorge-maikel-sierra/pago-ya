@@ -18,9 +18,7 @@ jest.unstable_mockModule('../../src/utils/asyncHandler.js', () => ({
   default: (fn) => fn,
 }));
 
-const { registerPaymentHandler, batchSyncHandler } = await import(
-  '../../src/controllers/payment.controller.js'
-);
+const { createPayment, syncPaymentsBatch } = await import('../../src/controllers/payment.controller.js');
 
 // --- Helpers ---
 const LOAN_ID = '550e8400-e29b-41d4-a716-446655440000';
@@ -51,7 +49,7 @@ const createRes = () => {
 
 const nextFn = jest.fn();
 
-describe('registerPaymentHandler', () => {
+describe('createPayment', () => {
   const validBody = {
     loanId: LOAN_ID,
     amountPaid: 25000,
@@ -88,7 +86,7 @@ describe('registerPaymentHandler', () => {
     const req = createReq(validBody);
     const res = createRes();
 
-    await registerPaymentHandler(req, res, nextFn);
+    await createPayment(req, res, nextFn);
 
     expect(res.status).toHaveBeenCalledWith(201);
     expect(res.json).toHaveBeenCalledWith(
@@ -107,7 +105,7 @@ describe('registerPaymentHandler', () => {
     const req = createReq(validBody);
     const res = createRes();
 
-    await registerPaymentHandler(req, res, nextFn);
+    await createPayment(req, res, nextFn);
 
     expect(mockEnqueuePaymentReceipt).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -124,7 +122,7 @@ describe('registerPaymentHandler', () => {
     const req = createReq(validBody);
     const res = createRes();
 
-    await registerPaymentHandler(req, res, nextFn);
+    await createPayment(req, res, nextFn);
 
     const io = req.app.get('io');
     expect(io.emit).toHaveBeenCalledWith(
@@ -142,7 +140,7 @@ describe('registerPaymentHandler', () => {
     req.app.get = jest.fn().mockReturnValue(undefined);
     const res = createRes();
 
-    await registerPaymentHandler(req, res, nextFn);
+    await createPayment(req, res, nextFn);
 
     expect(res.status).toHaveBeenCalledWith(201);
   });
@@ -152,11 +150,11 @@ describe('registerPaymentHandler', () => {
     const req = createReq(validBody);
     const res = createRes();
 
-    await expect(registerPaymentHandler(req, res, nextFn)).rejects.toThrow('DB Error');
+    await expect(createPayment(req, res, nextFn)).rejects.toThrow('DB Error');
   });
 });
 
-describe('batchSyncHandler', () => {
+describe('syncPaymentsBatch', () => {
   const validBody = {
     payments: [
       {
@@ -187,7 +185,7 @@ describe('batchSyncHandler', () => {
     const req = createReq(validBody);
     const res = createRes();
 
-    await batchSyncHandler(req, res, nextFn);
+    await syncPaymentsBatch(req, res, nextFn);
 
     expect(res.status).toHaveBeenCalledWith(200);
     expect(res.json).toHaveBeenCalledWith(
@@ -217,7 +215,7 @@ describe('batchSyncHandler', () => {
     const req = createReq(validBody);
     const res = createRes();
 
-    await batchSyncHandler(req, res, nextFn);
+    await syncPaymentsBatch(req, res, nextFn);
 
     expect(mockEnqueuePaymentReceipt).toHaveBeenCalledTimes(1);
     expect(mockEnqueuePaymentReceipt).toHaveBeenCalledWith(
@@ -230,7 +228,7 @@ describe('batchSyncHandler', () => {
     const req = createReq({ payments: [validBody.payments[0]] });
     const res = createRes();
 
-    await batchSyncHandler(req, res, nextFn);
+    await syncPaymentsBatch(req, res, nextFn);
 
     const io = req.app.get('io');
     expect(io.emit).toHaveBeenCalledWith(
@@ -246,7 +244,7 @@ describe('batchSyncHandler', () => {
     const req = createReq({ payments: [validBody.payments[0]] });
     const res = createRes();
 
-    await batchSyncHandler(req, res, nextFn);
+    await syncPaymentsBatch(req, res, nextFn);
 
     const io = req.app.get('io');
     expect(io.emit).not.toHaveBeenCalled();
@@ -258,7 +256,7 @@ describe('batchSyncHandler', () => {
     req.app.get = jest.fn().mockReturnValue(undefined);
     const res = createRes();
 
-    await batchSyncHandler(req, res, nextFn);
+    await syncPaymentsBatch(req, res, nextFn);
 
     expect(res.status).toHaveBeenCalledWith(200);
   });
@@ -268,7 +266,7 @@ describe('batchSyncHandler', () => {
     const req = createReq(validBody);
     const res = createRes();
 
-    await expect(batchSyncHandler(req, res, nextFn)).rejects.toThrow('Service down');
+    await expect(syncPaymentsBatch(req, res, nextFn)).rejects.toThrow('Service down');
   });
 
   it('incluye resumen con conflicts', async () => {
@@ -290,7 +288,7 @@ describe('batchSyncHandler', () => {
     });
     const res = createRes();
 
-    await batchSyncHandler(req, res, nextFn);
+    await syncPaymentsBatch(req, res, nextFn);
 
     const responseData = res.json.mock.calls[0][0].data;
     expect(responseData.summary).toEqual({
