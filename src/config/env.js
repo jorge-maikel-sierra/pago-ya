@@ -88,9 +88,7 @@ const parseEnv = () => {
     return envSchema.parse(process.env);
   } catch (err) {
     // Formatear los errores de forma legible antes de abortar
-    const issues = err.errors
-      .map((e) => `  • ${e.path.join('.')}: ${e.message}`)
-      .join('\n');
+    const issues = err.errors.map((e) => `  • ${e.path.join('.')}: ${e.message}`).join('\n');
     console.error(`[Config] ✗ Variables de entorno inválidas o faltantes:\n${issues}`);
     process.exit(1);
     // La línea siguiente es inalcanzable en runtime pero satisface consistent-return:

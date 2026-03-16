@@ -2,7 +2,11 @@ import { Router } from 'express';
 import { verifyToken } from '../middleware/auth.js';
 import authorize from '../middleware/authorize.js';
 import validate from '../middleware/validate.js';
-import { createUserSchema, updateUserSchema, changePasswordSchema } from '../schemas/user.schema.js';
+import {
+  createUserSchema,
+  updateUserSchema,
+  changePasswordSchema,
+} from '../schemas/user.schema.js';
 import * as userController from '../controllers/user.controller.js';
 
 // ============================================
@@ -37,7 +41,12 @@ router.put(
   validate(updateUserSchema),
   userController.updateUser,
 );
-router.patch('/:id/password', verifyToken, validate(changePasswordSchema), userController.changePassword);
+router.patch(
+  '/:id/password',
+  verifyToken,
+  validate(changePasswordSchema),
+  userController.changePassword,
+);
 router.delete(
   '/:id',
   verifyToken,
