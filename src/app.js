@@ -197,9 +197,6 @@ app.get('/api/health', (req, res) => {
 app.get('/api/health/db', getDatabaseHealth);
 app.get('/api/health/users', getUsersHealth);
 
-// TODO: Registrar rutas del módulo aquí
-// app.use('/api/auth', authRoutes);
-// app.use('/api/loans', loanRoutes);
 app.use('/admin', adminRoutes);
 // Rutas de autenticación públicas (login / register)
 app.use('/', authRoutes);
