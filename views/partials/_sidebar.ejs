@@ -2,12 +2,13 @@
   <nav class="mt-6 px-3 space-y-1">
     <% const menuItems = [
       { href: '/admin/dashboard', icon: '📊', label: 'Dashboard' },
-      { href: '/admin/loans', icon: '💳', label: 'Préstamos' },
+      // Reordenado: primero Clientes, luego Cobradores, Rutas, Préstamos y Reportes
       { href: '/admin/clients', icon: '👥', label: 'Clientes' },
       { href: '/admin/collectors', icon: '🧑‍💼', label: 'Cobradores' },
       { href: '/admin/routes', icon: '🗺️', label: 'Rutas' },
-      { href: '/admin/payments', icon: '💵', label: 'Pagos' },
+      { href: '/admin/loans', icon: '�', label: 'Préstamos' },
       { href: '/admin/reports', icon: '📈', label: 'Reportes' },
+      { href: '/admin/payments', icon: '💵', label: 'Pagos' },
     ]; %>
 
     <% menuItems.forEach(item => { %>
