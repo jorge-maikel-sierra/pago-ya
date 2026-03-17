@@ -23,7 +23,9 @@ describe('apiResponse helpers', () => {
 
     expect(res.status).toHaveBeenCalledWith(400);
     expect(res.json).toHaveBeenCalledWith(
-      expect.objectContaining({ error: { message: 'Fallo', code: 'BAD_REQUEST', details: [{ field: 'email' }] } }),
+      expect.objectContaining({
+        error: { message: 'Fallo', code: 'BAD_REQUEST', details: [{ field: 'email' }] },
+      }),
     );
   });
 });

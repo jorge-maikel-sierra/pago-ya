@@ -40,6 +40,37 @@ export const findCollectors = async (organizationId) => {
 };
 
 /**
+ * Búsqueda tipo typeahead de cobradores.
+ * Busca por nombre (firstName OR lastName) o por documento.
+ * Asumimos que el número de cédula puede estar en `phone`; por tanto se busca ahí.
+ *
+ * @param {string} organizationId
+ * @param {string} q
+ * @param {number} [limit=15]
+ * @returns {Promise<Array>}
+ */
+export const searchCollectors = async (organizationId, q, limit = 15) => {
+  if (!q || q.trim() === '') return [];
+  const term = q.trim();
+
+  return prisma.user.findMany({
+    where: {
+      organizationId,
+      role: 'COLLECTOR',
+      isActive: true,
+      OR: [
+        { firstName: { contains: term, mode: 'insensitive' } },
+        { lastName: { contains: term, mode: 'insensitive' } },
+        { phone: { contains: term, mode: 'insensitive' } },
+      ],
+    },
+    take: limit,
+    orderBy: [{ firstName: 'asc' }, { lastName: 'asc' }],
+    select: { id: true, firstName: true, lastName: true, phone: true },
+  });
+};
+
+/**
  * Obtiene un cobrador por ID verificando que pertenezca a la organización.
  * Lanza error 404 si no se encuentra.
  *

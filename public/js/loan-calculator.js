@@ -231,4 +231,150 @@
   /* ── Eventos ────────────────────────────────────────────────────── */
 
   btnPreview.addEventListener('click', requestPreview);
-}());
+
+    /* ── Typeahead / Autocomplete para Cliente, Cobrador y Ruta ─────── */
+
+    const debounce = (fn, wait = 300) => {
+      let t;
+      return (...args) => {
+        clearTimeout(t);
+        t = setTimeout(() => fn.apply(this, args), wait);
+      };
+    };
+
+    const fetchSuggestions = async (url) => {
+      try {
+        const res = await fetch(url, { headers: { Accept: 'application/json' } });
+        if (!res.ok) return [];
+        const json = await res.json();
+        return json.success ? json.data : [];
+      } catch (e) {
+        return [];
+      }
+    };
+
+    const createTypeahead = ({ inputId, hiddenId, suggestionsId, apiPath, renderLabel }) => {
+      const input = document.getElementById(inputId);
+      const hidden = document.getElementById(hiddenId);
+      const box = document.getElementById(suggestionsId);
+      if (!input || !box || !hidden) return;
+
+      let items = [];
+      let selectedIndex = -1;
+
+      const showBox = () => box.classList.remove('hidden');
+      const hideBox = () => {
+        box.classList.add('hidden');
+        selectedIndex = -1;
+      };
+
+      const renderItems = (list) => {
+        items = list;
+        if (!items || items.length === 0) {
+          box.innerHTML = '<div class="p-2 text-xs text-gray-500">No se encontraron resultados</div>';
+          showBox();
+          return;
+        }
+
+        box.innerHTML = items
+          .map((it, idx) => `
+            <div data-idx="${idx}" data-id="${it.id}" class="px-3 py-2 cursor-pointer hover:bg-gray-50">
+              ${renderLabel(it)}
+            </div>
+          `)
+          .join('');
+        showBox();
+      };
+
+      const doSearch = async (q) => {
+        if (!q || q.trim() === '') {
+          renderItems([]);
+          hidden.value = '';
+          return;
+        }
+        const url = `${apiPath}?q=${encodeURIComponent(q)}&limit=15`;
+        const res = await fetchSuggestions(url);
+        renderItems(res);
+      };
+
+      const debouncedSearch = debounce((e) => doSearch(e.target.value), 250);
+
+      input.addEventListener('input', (e) => {
+        // cualquier cambio en el texto invalida la selección previa
+        hidden.value = '';
+        debouncedSearch(e);
+      });
+
+      input.addEventListener('keydown', (e) => {
+        const nodes = box.querySelectorAll('[data-idx]');
+        if (e.key === 'ArrowDown') {
+          e.preventDefault();
+          if (nodes.length === 0) return;
+          selectedIndex = Math.min(selectedIndex + 1, nodes.length - 1);
+          nodes.forEach((n) => n.classList.remove('bg-gray-100'));
+          nodes[selectedIndex].classList.add('bg-gray-100');
+          nodes[selectedIndex].scrollIntoView({ block: 'nearest' });
+        } else if (e.key === 'ArrowUp') {
+          e.preventDefault();
+          if (nodes.length === 0) return;
+          selectedIndex = Math.max(selectedIndex - 1, 0);
+          nodes.forEach((n) => n.classList.remove('bg-gray-100'));
+          nodes[selectedIndex].classList.add('bg-gray-100');
+          nodes[selectedIndex].scrollIntoView({ block: 'nearest' });
+        } else if (e.key === 'Enter') {
+          if (selectedIndex >= 0 && items[selectedIndex]) {
+            e.preventDefault();
+            const it = items[selectedIndex];
+            hidden.value = it.id;
+            input.value = renderLabel(it).replace(/<[^>]+>/g, '');
+            hideBox();
+          }
+        } else if (e.key === 'Escape') {
+          hideBox();
+        }
+      });
+
+      // click en sugerencia
+      box.addEventListener('mousedown', (ev) => {
+        const el = ev.target.closest('[data-idx]');
+        if (!el) return;
+        const idx = Number(el.getAttribute('data-idx'));
+        const it = items[idx];
+        if (!it) return;
+        hidden.value = it.id;
+        input.value = renderLabel(it).replace(/<[^>]+>/g, '');
+        // evitar que el blur o submit interrumpa
+        ev.preventDefault();
+        hideBox();
+      });
+
+      // ocultar al perder foco (con pequeño delay para permitir click)
+      input.addEventListener('blur', () => setTimeout(hideBox, 150));
+    };
+
+    // Crear typeaheads
+    createTypeahead({
+      inputId: 'clientSearch',
+      hiddenId: 'clientId',
+      suggestionsId: 'clientSuggestions',
+      apiPath: '/admin/api/customers/search',
+      renderLabel: (it) => `${it.lastName}, ${it.firstName} <span class="text-xs text-gray-500">(${it.documentNumber || ''})</span>`,
+    });
+
+    createTypeahead({
+      inputId: 'collectorSearch',
+      hiddenId: 'collectorId',
+      suggestionsId: 'collectorSuggestions',
+      apiPath: '/admin/api/collectors/search',
+      renderLabel: (it) => `${it.firstName} ${it.lastName} <span class="text-xs text-gray-500">${it.phone ? `(${it.phone})` : ''}</span>`,
+    });
+
+    createTypeahead({
+      inputId: 'routeSearch',
+      hiddenId: 'routeId',
+      suggestionsId: 'routeSuggestions',
+      apiPath: '/admin/api/collection_routes/search',
+      renderLabel: (it) => `${it.name} <span class="text-xs text-gray-500">${it.description ? `- ${it.description}` : ''}</span>`,
+    });
+
+  }());

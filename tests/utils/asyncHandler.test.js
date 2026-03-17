@@ -26,8 +26,8 @@ describe('asyncHandler', () => {
 
     const handler = asyncHandler(async (_req, resObj) => resObj.json({ ok: true }));
 
-    await handler({}, res, next);
-    await new Promise((resolve) => setImmediate(resolve));
+  await handler({}, res, next);
+  await new Promise((resolve) => { setImmediate(resolve); });
 
     expect(next).not.toHaveBeenCalled();
     expect(res.json).toHaveBeenCalledWith({ ok: true });

@@ -765,6 +765,41 @@ const getSettings = asyncHandler(async (req, res) =>
   }),
 );
 
+/**
+ * GET /admin/api/customers/search?q=...
+ * API para typeahead de clientes.
+ */
+const searchCustomers = asyncHandler(async (req, res) => {
+  const q = String(req.query.q || '').trim();
+  const limit = Math.min(Number.parseInt(req.query.limit || '15', 10) || 15, 50);
+
+  const results = await clientService.searchClients(req.user.organizationId, q, limit);
+
+  return apiResponse.success(res, results);
+});
+
+/**
+ * GET /admin/api/collectors/search?q=...
+ */
+const searchCollectors = asyncHandler(async (req, res) => {
+  const q = String(req.query.q || '').trim();
+  const limit = Math.min(Number.parseInt(req.query.limit || '15', 10) || 15, 50);
+
+  const results = await collectorService.searchCollectors(req.user.organizationId, q, limit);
+  return apiResponse.success(res, results);
+});
+
+/**
+ * GET /admin/api/collection_routes/search?q=...
+ */
+const searchRoutes = asyncHandler(async (req, res) => {
+  const q = String(req.query.q || '').trim();
+  const limit = Math.min(Number.parseInt(req.query.limit || '15', 10) || 15, 50);
+
+  const results = await routeService.searchRoutes(req.user.organizationId, q, limit);
+  return apiResponse.success(res, results);
+});
+
 // ============================================
 // USUARIOS
 // ============================================
@@ -981,6 +1016,9 @@ export {
   getRoutes,
   getReports,
   getSettings,
+  searchCustomers,
+  searchCollectors,
+  searchRoutes,
   getUsers,
   getNewUser,
   createUser,

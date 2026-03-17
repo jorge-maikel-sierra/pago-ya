@@ -58,7 +58,12 @@ describe('user.service', () => {
   it('findAllUsers pasa filtros y paginación a Prisma', async () => {
     prismaMock.user.findMany.mockResolvedValue([{ id: 'u1' }]);
 
-    const users = await userService.findAllUsers('org-1', { role: 'ADMIN', isActive: true, page: 2, limit: 10 });
+    const users = await userService.findAllUsers('org-1', {
+      role: 'ADMIN',
+      isActive: true,
+      page: 2,
+      limit: 10,
+    });
 
     expect(prismaMock.user.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -74,9 +79,9 @@ describe('user.service', () => {
     prismaMock.user.findFirstOrThrow.mockResolvedValue({ passwordHash: 'hashed' });
     bcryptMock.compare.mockResolvedValue(false);
 
-    await expect(
-      userService.changePassword('id', 'org', 'bad', 'newpass'),
-    ).rejects.toMatchObject({ statusCode: 400 });
+    await expect(userService.changePassword('id', 'org', 'bad', 'newpass')).rejects.toMatchObject({
+      statusCode: 400,
+    });
   });
 
   it('countUsersByRole reduce el groupBy a objeto simple', async () => {

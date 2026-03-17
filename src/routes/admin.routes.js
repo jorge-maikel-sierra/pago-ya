@@ -18,6 +18,7 @@ import paymentsRouter from './admin.payments.routes.js';
 import reportsRouter from './admin.reports.routes.js';
 import usersRouter from './admin.users.routes.js';
 import organizationsRouter from './admin.organizations.routes.js';
+import adminApiRouter from './admin.api.routes.js';
 
 // ============================================
 // Admin Router — Pago Ya
@@ -53,6 +54,9 @@ router.use('/clients', clientsRouter);
 router.use('/collectors', collectorsRouter);
 router.use('/payments', paymentsRouter);
 router.use('/reports', reportsRouter);
+
+// --- APIs internas del panel (typeahead, etc.) ---
+router.use('/api', adminApiRouter);
 
 // --- Rutas de cobro (sin sub-recursos propios) ---
 router.get('/routes', getRoutes);

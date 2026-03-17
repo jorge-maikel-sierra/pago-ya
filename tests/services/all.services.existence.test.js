@@ -21,12 +21,12 @@ const serviceModules = [
 
 const helperModules = ['../../src/utils/apiResponse.js', '../../src/utils/asyncHandler.js'];
 
-const assertExportsAreFunctions = (exportsObj, modulePath) => {
+const assertExportsAreFunctions = (exportsObj) => {
   const entries = Object.entries(exportsObj);
   expect(entries.length).toBeGreaterThan(0);
   const functionEntries = entries.filter(([, value]) => typeof value === 'function');
   expect(functionEntries.length).toBeGreaterThan(0);
-  entries.forEach(([key, value]) => {
+  entries.forEach(([, value]) => {
     expect(value).not.toBeUndefined();
   });
 };

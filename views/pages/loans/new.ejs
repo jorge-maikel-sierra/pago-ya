@@ -44,27 +44,40 @@
 
     <div class="p-6 grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-5">
 
-      <!-- clientId: Cliente -->
+      <!-- clientId: Cliente (typeahead) -->
       <div class="sm:col-span-2">
-        <label for="clientId" class="block text-sm font-medium text-gray-700 mb-1">
+        <label for="clientSearch" class="block text-sm font-medium text-gray-700 mb-1">
           Cliente <span class="text-red-500">*</span>
         </label>
-        <select
-          id="clientId"
-          name="clientId"
+        <input
+          id="clientSearch"
+          name="clientSearch"
+          autocomplete="off"
+          type="text"
+          placeholder="Escribe nombre, cédula o NIT..."
+          value="<%= formData && formData.clientName ? formData.clientName : '' %>"
           required
           class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm
                  focus:outline-none focus:ring-2 focus:ring-brand-green focus:border-brand-green
                  bg-white"
-        >
-          <option value="">— Selecciona un cliente —</option>
-          <% clients.forEach(function(client) { %>
-            <option value="<%= client.id %>" <%= formData && formData.clientId === client.id ? 'selected' : '' %>>
-              <%= client.lastName %>, <%= client.firstName %>
-              &nbsp;(<%= client.documentNumber %>)
-            </option>
-          <% }); %>
-        </select>
+        />
+        <input type="hidden" id="clientId" name="clientId" value="<%= formData ? formData.clientId : '' %>" />
+        <div id="clientSuggestions" class="mt-1 bg-white border border-gray-200 rounded-md shadow-sm hidden max-h-60 overflow-auto text-sm"></div>
+        <noscript>
+          <select
+            id="clientId_noscript"
+            name="clientId"
+            required
+            class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm bg-white mt-2"
+          >
+            <option value="">— Selecciona un cliente —</option>
+            <% clients.forEach(function(client) { %>
+              <option value="<%= client.id %>" <%= formData && formData.clientId === client.id ? 'selected' : '' %>>
+                <%= client.lastName %>, <%= client.firstName %> (<%= client.documentNumber %>)
+              </option>
+            <% }); %>
+          </select>
+        </noscript>
         <% if (!clients || clients.length === 0) { %>
           <p class="mt-1 text-xs text-amber-600">
             No hay clientes activos registrados.
@@ -73,26 +86,40 @@
         <% } %>
       </div>
 
-      <!-- collectorId: Cobrador -->
+      <!-- collectorId: Cobrador (typeahead) -->
       <div class="sm:col-span-1">
-        <label for="collectorId" class="block text-sm font-medium text-gray-700 mb-1">
+        <label for="collectorSearch" class="block text-sm font-medium text-gray-700 mb-1">
           Cobrador <span class="text-red-500">*</span>
         </label>
-        <select
-          id="collectorId"
-          name="collectorId"
+        <input
+          id="collectorSearch"
+          name="collectorSearch"
+          autocomplete="off"
+          type="text"
+          placeholder="Escribe nombre o cédula..."
+          value="<%= formData && formData.collectorName ? formData.collectorName : '' %>"
           required
           class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm
                  focus:outline-none focus:ring-2 focus:ring-brand-green focus:border-brand-green
                  bg-white"
-        >
-          <option value="">— Selecciona un cobrador —</option>
-          <% collectors.forEach(function(collector) { %>
-            <option value="<%= collector.id %>" <%= formData && formData.collectorId === collector.id ? 'selected' : '' %>>
-              <%= collector.firstName %> <%= collector.lastName %>
-            </option>
-          <% }); %>
-        </select>
+        />
+        <input type="hidden" id="collectorId" name="collectorId" value="<%= formData ? formData.collectorId : '' %>" />
+        <div id="collectorSuggestions" class="mt-1 bg-white border border-gray-200 rounded-md shadow-sm hidden max-h-60 overflow-auto text-sm"></div>
+        <noscript>
+          <select
+            id="collectorId_noscript"
+            name="collectorId"
+            required
+            class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm bg-white mt-2"
+          >
+            <option value="">— Selecciona un cobrador —</option>
+            <% collectors.forEach(function(collector) { %>
+              <option value="<%= collector.id %>" <%= formData && formData.collectorId === collector.id ? 'selected' : '' %>>
+                <%= collector.firstName %> <%= collector.lastName %>
+              </option>
+            <% }); %>
+          </select>
+        </noscript>
         <% if (!collectors || collectors.length === 0) { %>
           <p class="mt-1 text-xs text-amber-600">
             No hay cobradores registrados.
@@ -100,24 +127,37 @@
         <% } %>
       </div>
 
-      <!-- routeId: Ruta de cobro (opcional) -->
+      <!-- routeId: Ruta de cobro (typeahead, opcional) -->
       <div class="sm:col-span-1">
-        <label for="routeId" class="block text-sm font-medium text-gray-700 mb-1">
+        <label for="routeSearch" class="block text-sm font-medium text-gray-700 mb-1">
           Ruta de cobro
           <span class="text-xs text-gray-400 font-normal">(opcional)</span>
         </label>
-        <select
-          id="routeId"
-          name="routeId"
+        <input
+          id="routeSearch"
+          name="routeSearch"
+          autocomplete="off"
+          type="text"
+          placeholder="Escribe nombre o código de ruta..."
+          value="<%= formData && formData.routeName ? formData.routeName : '' %>"
           class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm
                  focus:outline-none focus:ring-2 focus:ring-brand-green focus:border-brand-green
                  bg-white"
-        >
-          <option value="">— Sin ruta asignada —</option>
-          <% routes.forEach(function(route) { %>
-            <option value="<%= route.id %>" <%= formData && formData.routeId === route.id ? 'selected' : '' %>><%= route.name %></option>
-          <% }); %>
-        </select>
+        />
+        <input type="hidden" id="routeId" name="routeId" value="<%= formData ? formData.routeId : '' %>" />
+        <div id="routeSuggestions" class="mt-1 bg-white border border-gray-200 rounded-md shadow-sm hidden max-h-60 overflow-auto text-sm"></div>
+        <noscript>
+          <select
+            id="routeId_noscript"
+            name="routeId"
+            class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm bg-white mt-2"
+          >
+            <option value="">— Sin ruta asignada —</option>
+            <% routes.forEach(function(route) { %>
+              <option value="<%= route.id %>" <%= formData && formData.routeId === route.id ? 'selected' : '' %>><%= route.name %></option>
+            <% }); %>
+          </select>
+        </noscript>
       </div>
 
     </div>

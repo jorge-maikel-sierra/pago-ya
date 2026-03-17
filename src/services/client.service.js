@@ -50,6 +50,47 @@ export const findClients = async (organizationId, { search } = {}) => {
 };
 
 /**
+ * Búsqueda tipo typeahead de clientes limitada.
+ * Busca por nombre (firstName OR lastName), documentNumber o businessName.
+ *
+ * @param {string} organizationId
+ * @param {string} q
+ * @param {number} [limit=15]
+ * @returns {Promise<Array>}
+ */
+export const searchClients = async (organizationId, q, limit = 15) => {
+  if (!q || q.trim() === '') return [];
+
+  const term = q.trim();
+
+  return prisma.client.findMany({
+    where: {
+      organizationId,
+      AND: [
+        { isActive: true },
+        {
+          OR: [
+            { firstName: { contains: term, mode: 'insensitive' } },
+            { lastName: { contains: term, mode: 'insensitive' } },
+            { documentNumber: { contains: term, mode: 'insensitive' } },
+            { businessName: { contains: term, mode: 'insensitive' } },
+          ],
+        },
+      ],
+    },
+    take: limit,
+    orderBy: [{ firstName: 'asc' }, { lastName: 'asc' }],
+    select: {
+      id: true,
+      firstName: true,
+      lastName: true,
+      documentNumber: true,
+      businessName: true,
+    },
+  });
+};
+
+/**
  * Obtiene el perfil completo de un cliente con sus préstamos e incidentes.
  * Verifica que el cliente pertenezca a la organización a través de sus préstamos.
  * Lanza error 404 si no se encuentra.
