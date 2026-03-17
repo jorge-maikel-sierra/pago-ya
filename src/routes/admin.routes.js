@@ -7,6 +7,10 @@ import {
   redirectToDashboard,
   getDashboard,
   getRoutes,
+  getNewRoute,
+  createRoute,
+  getEditRoute,
+  updateRoute,
   getSettings,
   logout,
 } from '../controllers/admin.controller.js';
@@ -60,6 +64,10 @@ router.use('/api', adminApiRouter);
 
 // --- Rutas de cobro (sin sub-recursos propios) ---
 router.get('/routes', getRoutes);
+router.get('/routes/new', getNewRoute);
+router.post('/routes', createRoute);
+router.get('/routes/:id/edit', getEditRoute);
+router.put('/routes/:id', updateRoute);
 
 // --- Configuración ---
 router.get('/settings', getSettings);

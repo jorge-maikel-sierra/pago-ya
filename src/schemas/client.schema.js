@@ -40,15 +40,20 @@ const createClientSchema = z.object({
   documentNumber: z
     .string({ required_error: 'La cédula es obligatoria' })
     .trim()
-    .min(1, 'La cédula no puede estar vacía')
-    .max(30, 'La cédula no puede superar 30 caracteres'),
+    .min(5, 'La cédula no puede estar vacía y debe tener al menos 5 dígitos')
+    .max(30, 'La cédula no puede superar 30 caracteres')
+    .regex(/^[0-9]+$/, 'El número de documento debe contener solo dígitos'),
 
   phone: z
-    .string()
-    .trim()
-    .max(20, 'El teléfono no puede superar 20 caracteres')
-    .optional()
-    .or(z.literal('')),
+    .union([
+      z
+        .string()
+        .trim()
+        .max(20, 'El teléfono no puede superar 20 caracteres')
+        .regex(/^[0-9]+$/, 'El teléfono debe contener solo dígitos'),
+      z.literal(''),
+    ])
+    .optional(),
 
   address: z
     .string({ required_error: 'La dirección es obligatoria' })
@@ -73,11 +78,15 @@ const createClientSchema = z.object({
     .or(z.literal('')),
 
   referencePhone: z
-    .string()
-    .trim()
-    .max(20, 'El teléfono del referido no puede superar 20 caracteres')
-    .optional()
-    .or(z.literal('')),
+    .union([
+      z
+        .string()
+        .trim()
+        .max(20, 'El teléfono del referido no puede superar 20 caracteres')
+        .regex(/^[0-9]+$/, 'El teléfono del referido debe contener solo dígitos'),
+      z.literal(''),
+    ])
+    .optional(),
 
   businessName: z
     .string()

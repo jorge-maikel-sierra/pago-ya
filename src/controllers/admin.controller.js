@@ -707,6 +707,119 @@ const getRoutes = asyncHandler(async (req, res) => {
   });
 });
 
+/**
+ * GET /admin/routes/new
+ * Renderiza el formulario para crear una nueva ruta de cobro.
+ */
+const getNewRoute = asyncHandler(async (req, res) => {
+  const { flashError } = req.session;
+  delete req.session.flashError;
+
+  // Obtenemos cobradores para asignar la ruta opcionalmente
+  const collectors = await collectorService.findCollectors(req.user.organizationId);
+
+  return res.render('pages/routes/new', {
+    title: 'Nueva Ruta',
+    user: req.user,
+    currentPath: '/admin/routes/new',
+    collectors,
+    flashError,
+  });
+});
+
+/**
+ * POST /admin/routes
+ * Crea una nueva ruta en la organización.
+ */
+const createRoute = asyncHandler(async (req, res) => {
+  try {
+    const { name, description, collectorId } = req.body;
+
+    if (!name || String(name).trim() === '') {
+      req.session.flashError = 'El nombre de la ruta es requerido';
+      return req.session.save(() => res.redirect('/admin/routes/new'));
+    }
+
+    const payload = {
+      name: String(name).trim(),
+      description: description ? String(description).trim() : null,
+      collectorId: collectorId || null,
+      // checkbox returns 'on' when checked; normalizar a boolean
+      isActive:
+        req.body.isActive === 'on' || req.body.isActive === 'true' || req.body.isActive === true,
+    };
+
+    await routeService.createRoute(req.user.organizationId, payload);
+    req.session.flashSucess = 'Ruta creada correctamente';
+    return res.redirect('/admin/routes');
+  } catch (error) {
+    if (error.isOperational) {
+      req.session.flashError = error.message;
+      return req.session.save(() => res.redirect('/admin/routes/new'));
+    }
+    throw error;
+  }
+});
+
+/**
+ * GET /admin/routes/:id/edit
+ * Renderiza el formulario para editar una ruta.
+ */
+const getEditRoute = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const { flashError } = req.session;
+  delete req.session.flashError;
+
+  const [route, collectors] = await Promise.all([
+    routeService.findRouteById(id, req.user.organizationId),
+    collectorService.findCollectors(req.user.organizationId),
+  ]);
+
+  return res.render('pages/routes/edit', {
+    title: 'Editar Ruta',
+    user: req.user,
+    currentPath: '/admin/routes',
+    route,
+    collectors,
+    flashError,
+  });
+});
+
+/**
+ * PUT /admin/routes/:id
+ * Actualiza una ruta existente.
+ */
+const updateRoute = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const { name, description, collectorId } = req.body;
+
+    if (!name || String(name).trim() === '') {
+      req.session.flashError = 'El nombre de la ruta es requerido';
+      return req.session.save(() => res.redirect(`/admin/routes/${id}/edit`));
+    }
+
+    const payload = {
+      name: String(name).trim(),
+      description: description ? String(description).trim() : null,
+      collectorId: collectorId || null,
+      isActive:
+        req.body.isActive === 'on' || req.body.isActive === 'true' || req.body.isActive === true,
+    };
+
+    await routeService.updateRoute(id, req.user.organizationId, payload);
+    req.session.flashSucess = 'Ruta actualizada correctamente';
+    return res.redirect('/admin/routes');
+  } catch (error) {
+    if (error.isOperational) {
+      req.session.flashError = error.message;
+      return req.session.save(() => res.redirect(`/admin/routes/${id}/edit`));
+    }
+    throw error;
+  }
+});
+
 // ============================================
 // REPORTES
 // ============================================
@@ -1014,6 +1127,10 @@ export {
   getNewPayment,
   createPayment,
   getRoutes,
+  getNewRoute,
+  createRoute,
+  getEditRoute,
+  updateRoute,
   getReports,
   getSettings,
   searchCustomers,

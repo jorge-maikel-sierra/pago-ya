@@ -126,6 +126,10 @@
           </label>
           <input
             type="text"
+            inputmode="numeric"
+            pattern="[0-9]*"
+            oninput="this.value = this.value.replace(/\D/g, '')"
+            title="Solo dígitos"
             id="documentNumber"
             name="documentNumber"
             required
@@ -146,6 +150,10 @@
           </label>
           <input
             type="tel"
+            inputmode="numeric"
+            pattern="[0-9]*"
+            oninput="this.value = this.value.replace(/\D/g, '')"
+            title="Solo dígitos"
             id="phone"
             name="phone"
             maxlength="20"
@@ -278,6 +286,10 @@
           </label>
           <input
             type="tel"
+            inputmode="numeric"
+            pattern="[0-9]*"
+            oninput="this.value = this.value.replace(/\D/g, '')"
+            title="Solo dígitos"
             id="referencePhone"
             name="referencePhone"
             maxlength="20"

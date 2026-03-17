@@ -15,8 +15,18 @@ export const findRoutes = async (organizationId) =>
       name: true,
       description: true,
       isActive: true,
-      collector: { select: { id: true, firstName: true, lastName: true } },
-      _count: { select: { clients: true } },
+      collector: {
+        select: {
+          id: true,
+          firstName: true,
+          lastName: true,
+        },
+      },
+      _count: {
+        select: {
+          clients: true,
+        },
+      },
     },
   });
 
@@ -45,5 +55,92 @@ export const searchRoutes = async (organizationId, q, limit = 15) => {
     take: limit,
     orderBy: { name: 'asc' },
     select: { id: true, name: true, description: true },
+  });
+};
+
+/**
+ * Crea una nueva ruta de cobro en la organización.
+ *
+ * @param {string} organizationId
+ * @param {{ name: string, description?: string, collectorId?: string, isActive?: boolean }} data
+ * @returns {Promise<import('@prisma/client').Route>}
+ */
+export const createRoute = async (organizationId, data) => {
+  const { name, description, collectorId, isActive } = data;
+
+  return prisma.route.create({
+    data: {
+      organizationId,
+      name,
+      description: description || null,
+      collectorId: collectorId || null,
+      isActive: isActive ?? true,
+    },
+  });
+};
+
+/**
+ * Obtiene una ruta por id y verifica que pertenezca a la organización.
+ * Lanza error si no se encuentra.
+ *
+ * @param {string} id
+ * @param {string} organizationId
+ * @returns {Promise<import('@prisma/client').Route>}
+ */
+export const findRouteById = async (id, organizationId) => {
+  const route = await prisma.route.findFirst({
+    where: { id, organizationId },
+    select: {
+      id: true,
+      organizationId: true,
+      collectorId: true,
+      name: true,
+      description: true,
+      isActive: true,
+      collector: {
+        select: {
+          id: true,
+          firstName: true,
+          lastName: true,
+        },
+      },
+    },
+  });
+
+  if (!route) {
+    const err = new Error('Ruta no encontrada');
+    err.statusCode = 404;
+    err.isOperational = true;
+    throw err;
+  }
+
+  return route;
+};
+
+/**
+ * Actualiza una ruta verificando organización.
+ *
+ * @param {string} id
+ * @param {string} organizationId
+ * @param {Object} data
+ * @param {string} [data.name]
+ * @param {string} [data.description]
+ * @param {string|null} [data.collectorId]
+ * @param {boolean} [data.isActive]
+ * @returns {Promise<import('@prisma/client').Route>}
+ */
+export const updateRoute = async (id, organizationId, data) => {
+  await prisma.route.findFirstOrThrow({ where: { id, organizationId } });
+
+  const { name, description, collectorId, isActive } = data;
+
+  return prisma.route.update({
+    where: { id },
+    data: {
+      name,
+      description: description ?? null,
+      collectorId: collectorId || null,
+      isActive: isActive ?? true,
+    },
   });
 };
