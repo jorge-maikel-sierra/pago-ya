@@ -179,3 +179,49 @@ export const updateCollector = async (id, organizationId, data) => {
     throw error;
   }
 };
+
+/**
+ * Elimina un cobrador de la organización si no tiene préstamos ni pagos asociados.
+ * Libera las rutas asignadas antes de borrar el usuario.
+ *
+ * @param {string} id - UUID del cobrador
+ * @param {string} organizationId - UUID de la organización
+ * @returns {Promise<void>}
+ */
+export const deleteCollector = async (id, organizationId) => {
+  const collector = await prisma.user.findFirst({
+    where: { id, organizationId, role: 'COLLECTOR' },
+    select: { id: true },
+  });
+
+  if (!collector) {
+    const err = new Error('Cobrador no encontrado');
+    err.statusCode = 404;
+    err.isOperational = true;
+    throw err;
+  }
+
+  const [loanCount, paymentCount, incidentCount] = await prisma.$transaction([
+    prisma.loan.count({ where: { collectorId: id, organizationId } }),
+    prisma.payment.count({ where: { collectorId: id, loan: { organizationId } } }),
+    prisma.incident.count({ where: { collectorId: id, loan: { organizationId } } }),
+  ]);
+
+  if (loanCount > 0 || paymentCount > 0 || incidentCount > 0) {
+    const err = new Error(
+      'No puedes eliminar este cobrador porque tiene préstamos o pagos asociados',
+    );
+    err.statusCode = 409;
+    err.isOperational = true;
+    throw err;
+  }
+
+  await prisma.route.updateMany({
+    where: { collectorId: id, organizationId },
+    data: { collectorId: null },
+  });
+
+  await prisma.gpsLocation.deleteMany({ where: { collectorId: id } });
+
+  await prisma.user.delete({ where: { id } });
+};

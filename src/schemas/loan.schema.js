@@ -35,18 +35,24 @@ const createLoanSchema = z.object({
   // Aceptar la fecha en formato YYYY-MM-DD desde el formulario HTML.
   // Usamos preprocess para transformar el string a Date y luego validar
   // con z.date() — así evitamos errores 422 al enviar la previsualización.
-  disbursementDate: z.preprocess((val) => {
-    if (typeof val === 'string') {
-      // Construir Date desde YYYY-MM-DD
-      const parts = val.split('-').map((p) => Number(p));
-      if (parts.length === 3 && parts.every((n) => Number.isFinite(n))) {
-        const [year, month, day] = parts;
-        return new Date(year, month - 1, day);
+  disbursementDate: z.preprocess(
+    (val) => {
+      if (typeof val === 'string') {
+        // Construir Date desde YYYY-MM-DD
+        const parts = val.split('-').map((p) => Number(p));
+        if (parts.length === 3 && parts.every((n) => Number.isFinite(n))) {
+          const [year, month, day] = parts;
+          return new Date(year, month - 1, day);
+        }
+        return new Date(val);
       }
-      return new Date(val);
-    }
-    return val;
-  }, z.date({ required_error: 'disbursementDate es obligatorio', invalid_type_error: 'disbursementDate debe ser una fecha válida (YYYY-MM-DD)' })),
+      return val;
+    },
+    z.date({
+      required_error: 'disbursementDate es obligatorio',
+      invalid_type_error: 'disbursementDate debe ser una fecha válida (YYYY-MM-DD)',
+    }),
+  ),
   paymentFrequency: z
     .enum(PAYMENT_FREQUENCIES, {
       errorMap: () => ({

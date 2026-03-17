@@ -202,7 +202,7 @@ const createLoan = asyncHandler(async (req, res) => {
     collectorId: req.body.collectorId,
     principalAmount: +req.body.principalAmount,
     // Convertir porcentaje a fracción para el engine financiero (ej. 5 -> 0.05)
-    interestRate: (+req.body.interestRate) / 100,
+    interestRate: +req.body.interestRate / 100,
     paymentFrequency: req.body.paymentFrequency,
     amortizationType: req.body.amortizationType,
     numberOfPayments: Number.parseInt(req.body.numberOfPayments, 10),
@@ -268,7 +268,7 @@ const previewLoan = asyncHandler(async (req, res) => {
   const parsed = previewSchema.safeParse({
     principalAmount: +req.body.principalAmount,
     // El formulario envía la tasa en porcentaje (ej. 5 = 5%). Convertir a fracción (0.05)
-    interestRate: (+req.body.interestRate) / 100,
+    interestRate: +req.body.interestRate / 100,
     paymentFrequency: req.body.paymentFrequency,
     amortizationType: req.body.amortizationType,
     numberOfPayments: Number.parseInt(req.body.numberOfPayments, 10),
@@ -283,7 +283,10 @@ const previewLoan = asyncHandler(async (req, res) => {
     // Loguear detalles para facilitar depuración en entornos de desarrollo
     if (process.env.NODE_ENV !== 'production') {
       // eslint-disable-next-line no-console
-      console.debug('[previewLoan] payload inválido', { body: req.body, errors: parsed.error.errors });
+      console.debug('[previewLoan] payload inválido', {
+        body: req.body,
+        errors: parsed.error.errors,
+      });
     }
 
     return apiResponse.error(res, 'Datos de previsualización inválidos', 422, errors);
@@ -479,6 +482,10 @@ const restrictClient = asyncHandler(async (req, res) => {
  * @param {import('express').Response} res
  */
 const getCollectors = asyncHandler(async (req, res) => {
+  const { flashSucess, flashError } = req.session;
+  delete req.session.flashSucess;
+  delete req.session.flashError;
+
   const collectors = await collectorService.findCollectors(req.user.organizationId);
 
   return res.render('pages/collectors/index', {
@@ -486,6 +493,8 @@ const getCollectors = asyncHandler(async (req, res) => {
     user: req.user,
     currentPath: '/admin/collectors',
     collectors,
+    flashSucess,
+    flashError,
   });
 });
 
@@ -571,6 +580,29 @@ const updateCollector = asyncHandler(async (req, res) => {
     if (error.isOperational) {
       req.session.flashError = error.message;
       return req.session.save(() => res.redirect(`/admin/collectors/${id}/edit`));
+    }
+    throw error;
+  }
+});
+
+/**
+ * DELETE /admin/collectors/:id
+ * Elimina un cobrador de la organización actual.
+ *
+ * @param {import('express').Request} req
+ * @param {import('express').Response} res
+ */
+const deleteCollector = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    await collectorService.deleteCollector(id, req.user.organizationId);
+    req.session.flashSucess = 'Cobrador eliminado correctamente';
+    return req.session.save(() => res.redirect('/admin/collectors'));
+  } catch (error) {
+    if (error.isOperational) {
+      req.session.flashError = error.message;
+      return req.session.save(() => res.redirect('/admin/collectors'));
     }
     throw error;
   }
@@ -1131,6 +1163,7 @@ export {
   createCollector,
   getEditCollector,
   updateCollector,
+  deleteCollector,
   getPayments,
   getNewPayment,
   createPayment,

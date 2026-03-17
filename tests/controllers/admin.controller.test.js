@@ -4,17 +4,25 @@ import { jest, describe, it, expect, beforeEach } from '@jest/globals';
 const mockGetDashboardKPIs = jest.fn();
 const mockFindUnique = jest.fn();
 const mockUserFindMany = jest.fn();
+const mockUserFindFirst = jest.fn();
+const mockUserDelete = jest.fn();
 const mockClientFindMany = jest.fn();
 const mockClientFindFirst = jest.fn();
 const mockClientUpdate = jest.fn();
 const mockLoanFindMany = jest.fn();
 const mockLoanFindFirst = jest.fn();
+const mockLoanCount = jest.fn();
 const mockRouteFindMany = jest.fn();
+const mockRouteUpdateMany = jest.fn();
 const mockIncidentFindMany = jest.fn();
+const mockIncidentCount = jest.fn();
 const mockPaymentScheduleFindMany = jest.fn();
 const mockPaymentFindMany = jest.fn();
 const mockPaymentCount = jest.fn();
 const mockBcryptCompare = jest.fn();
+const mockGpsDeleteMany = jest.fn();
+const mockEnqueuePaymentReceipt = jest.fn();
+const mockPrismaTransaction = jest.fn((actions) => Promise.all(actions));
 
 jest.unstable_mockModule('../../src/services/admin.service.js', () => ({
   getDashboardKPIs: mockGetDashboardKPIs,
@@ -26,22 +34,36 @@ jest.unstable_mockModule('../../src/utils/asyncHandler.js', () => ({
 
 jest.unstable_mockModule('../../src/config/prisma.js', () => ({
   default: {
-    user: { findUnique: mockFindUnique, findMany: mockUserFindMany },
+    $transaction: mockPrismaTransaction,
+    user: {
+      findUnique: mockFindUnique,
+      findMany: mockUserFindMany,
+      findFirst: mockUserFindFirst,
+      findFirstOrThrow: mockUserFindFirst,
+      delete: mockUserDelete,
+      update: jest.fn(),
+      create: jest.fn(),
+    },
     client: {
       findMany: mockClientFindMany,
       findFirst: mockClientFindFirst,
       update: mockClientUpdate,
     },
-    loan: { findMany: mockLoanFindMany, findFirst: mockLoanFindFirst },
-    route: { findMany: mockRouteFindMany },
-    incident: { findMany: mockIncidentFindMany },
+    loan: { findMany: mockLoanFindMany, findFirst: mockLoanFindFirst, count: mockLoanCount },
+    route: { findMany: mockRouteFindMany, updateMany: mockRouteUpdateMany },
+    incident: { findMany: mockIncidentFindMany, count: mockIncidentCount },
     paymentSchedule: { findMany: mockPaymentScheduleFindMany },
     payment: { findMany: mockPaymentFindMany, count: mockPaymentCount },
+    gpsLocation: { deleteMany: mockGpsDeleteMany },
   },
 }));
 
 jest.unstable_mockModule('bcryptjs', () => ({
   default: { compare: mockBcryptCompare },
+}));
+
+jest.unstable_mockModule('../../src/services/notification.service.js', () => ({
+  enqueuePaymentReceipt: mockEnqueuePaymentReceipt,
 }));
 
 const {
@@ -56,6 +78,7 @@ const {
   getClient,
   restrictClient,
   getCollectors,
+  deleteCollector,
   getRoutes,
   getReports,
   getPayments,
@@ -91,6 +114,13 @@ const createReq = (overrides = {}) => ({
     ...overrides.user,
   },
   ...overrides,
+  session: (() => {
+    const session = overrides.session ?? {};
+    if (typeof session.save !== 'function') {
+      session.save = (cb) => (typeof cb === 'function' ? cb() : undefined);
+    }
+    return session;
+  })(),
 });
 
 const createRes = () => {
@@ -840,12 +870,70 @@ describe('getCollectors', () => {
 
     await getCollectors(req, res);
 
-    expect(res.render).toHaveBeenCalledWith('pages/collectors/index', {
-      title: 'Cobradores',
-      user: req.user,
-      currentPath: '/admin/collectors',
-      collectors: sampleCollectors,
+    expect(res.render).toHaveBeenCalledWith(
+      'pages/collectors/index',
+      expect.objectContaining({
+        title: 'Cobradores',
+        user: req.user,
+        currentPath: '/admin/collectors',
+        collectors: sampleCollectors,
+        flashSucess: undefined,
+        flashError: undefined,
+      }),
+    );
+  });
+});
+
+// ============================================
+// deleteCollector
+// ============================================
+describe('deleteCollector', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('elimina el cobrador y redirige con flash de éxito', async () => {
+    mockUserFindFirst.mockResolvedValue({ id: 'col-123' });
+    mockLoanCount.mockResolvedValue(0);
+    mockPaymentCount.mockResolvedValue(0);
+    mockIncidentCount.mockResolvedValue(0);
+    mockRouteUpdateMany.mockResolvedValue({});
+    mockGpsDeleteMany.mockResolvedValue({});
+    mockUserDelete.mockResolvedValue({});
+
+    const req = createReq({ params: { id: 'col-123' } });
+    const res = createRes();
+
+    await deleteCollector(req, res);
+
+    expect(mockUserFindFirst).toHaveBeenCalledWith({
+      where: { id: 'col-123', organizationId: ORG_ID, role: 'COLLECTOR' },
+      select: { id: true },
     });
+    expect(mockLoanCount).toHaveBeenCalledWith({
+      where: { collectorId: 'col-123', organizationId: ORG_ID },
+    });
+    expect(mockPaymentCount).toHaveBeenCalledWith({
+      where: { collectorId: 'col-123', loan: { organizationId: ORG_ID } },
+    });
+    expect(mockRouteUpdateMany).toHaveBeenCalledWith({
+      where: { collectorId: 'col-123', organizationId: ORG_ID },
+      data: { collectorId: null },
+    });
+    expect(mockUserDelete).toHaveBeenCalledWith({ where: { id: 'col-123' } });
+    expect(req.session.flashSucess).toBe('Cobrador eliminado correctamente');
+    expect(res.redirect).toHaveBeenCalledWith('/admin/collectors');
+  });
+
+  it('setea flashError y redirige cuando hay error operativo', async () => {
+    mockUserFindFirst.mockResolvedValue(null);
+    const req = createReq({ params: { id: 'col-999' } });
+    const res = createRes();
+
+    await deleteCollector(req, res);
+
+    expect(req.session.flashError).toBe('Cobrador no encontrado');
+    expect(res.redirect).toHaveBeenCalledWith('/admin/collectors');
   });
 });
 

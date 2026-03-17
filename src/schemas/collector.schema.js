@@ -97,4 +97,14 @@ const updateCollectorSchema = z.object({
   }),
 });
 
-export { createCollectorSchema, updateCollectorSchema };
+/**
+ * Schema de validación para eliminar un cobrador.
+ * DELETE /admin/collectors/:id
+ */
+const deleteCollectorSchema = z.object({
+  params: z.object({
+    id: z.string().uuid('El ID del cobrador debe ser un UUID válido'),
+  }),
+});
+
+export { createCollectorSchema, updateCollectorSchema, deleteCollectorSchema };

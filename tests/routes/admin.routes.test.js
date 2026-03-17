@@ -21,13 +21,21 @@ const mockGetNewCollector = jest.fn((req, res) => res.status(200).end());
 const mockCreateCollector = jest.fn((req, res) => res.status(200).end());
 const mockGetEditCollector = jest.fn((req, res) => res.status(200).end());
 const mockUpdateCollector = jest.fn((req, res) => res.status(200).end());
+const mockDeleteCollector = jest.fn((req, res) => res.status(200).end());
 const mockGetPayments = jest.fn((req, res) => res.status(200).end());
 const mockGetNewPayment = jest.fn((req, res) => res.status(200).end());
 const mockCreatePayment = jest.fn((req, res) => res.status(200).end());
 const mockGetRoutes = jest.fn((req, res) => res.status(200).end());
+const mockGetNewRoute = jest.fn((req, res) => res.status(200).end());
+const mockCreateRoute = jest.fn((req, res) => res.status(200).end());
+const mockGetEditRoute = jest.fn((req, res) => res.status(200).end());
+const mockUpdateRoute = jest.fn((req, res) => res.status(200).end());
 const mockGetReports = jest.fn((req, res) => res.status(200).end());
 const mockExportReport = jest.fn((req, res) => res.status(200).end());
 const mockGetSettings = jest.fn((req, res) => res.status(200).end());
+const mockSearchCustomers = jest.fn((req, res) => res.status(200).end());
+const mockSearchCollectors = jest.fn((req, res) => res.status(200).end());
+const mockSearchRoutes = jest.fn((req, res) => res.status(200).end());
 const mockGetUsers = jest.fn((req, res) => res.status(200).end());
 const mockGetNewUser = jest.fn((req, res) => res.status(200).end());
 const mockCreateUser = jest.fn((req, res) => res.status(200).end());
@@ -59,12 +67,20 @@ jest.unstable_mockModule('../../src/controllers/admin.controller.js', () => ({
   createCollector: mockCreateCollector,
   getEditCollector: mockGetEditCollector,
   updateCollector: mockUpdateCollector,
+  deleteCollector: mockDeleteCollector,
   getPayments: mockGetPayments,
   getNewPayment: mockGetNewPayment,
   createPayment: mockCreatePayment,
   getRoutes: mockGetRoutes,
+  getNewRoute: mockGetNewRoute,
+  createRoute: mockCreateRoute,
+  getEditRoute: mockGetEditRoute,
+  updateRoute: mockUpdateRoute,
   getReports: mockGetReports,
   getSettings: mockGetSettings,
+  searchCustomers: mockSearchCustomers,
+  searchCollectors: mockSearchCollectors,
+  searchRoutes: mockSearchRoutes,
   getUsers: mockGetUsers,
   getNewUser: mockGetNewUser,
   createUser: mockCreateUser,
@@ -269,6 +285,53 @@ describe('admin.routes', () => {
 
       expect(mockGetCollectors).toHaveBeenCalled();
     });
+
+    it('GET /admin/collectors/new calls getNewCollector', async () => {
+      await request(app)
+        .get('/admin/collectors/new')
+        .set('x-test-session', adminSession)
+        .expect(200);
+
+      expect(mockGetNewCollector).toHaveBeenCalled();
+    });
+
+    it('POST /admin/collectors calls createCollector', async () => {
+      await request(app)
+        .post('/admin/collectors')
+        .set('x-test-session', adminSession)
+        .send({ firstName: 'Test' })
+        .expect(200);
+
+      expect(mockCreateCollector).toHaveBeenCalled();
+    });
+
+    it('GET /admin/collectors/:id/edit calls getEditCollector', async () => {
+      await request(app)
+        .get('/admin/collectors/abc/edit')
+        .set('x-test-session', adminSession)
+        .expect(200);
+
+      expect(mockGetEditCollector).toHaveBeenCalled();
+    });
+
+    it('PUT /admin/collectors/:id calls updateCollector', async () => {
+      await request(app)
+        .put('/admin/collectors/abc')
+        .set('x-test-session', adminSession)
+        .send({ firstName: 'Edit' })
+        .expect(200);
+
+      expect(mockUpdateCollector).toHaveBeenCalled();
+    });
+
+    it('DELETE /admin/collectors/:id calls deleteCollector', async () => {
+      await request(app)
+        .delete('/admin/collectors/abc')
+        .set('x-test-session', adminSession)
+        .expect(200);
+
+      expect(mockDeleteCollector).toHaveBeenCalled();
+    });
   });
 
   describe('route routes', () => {
@@ -276,6 +339,41 @@ describe('admin.routes', () => {
       await request(app).get('/admin/routes').set('x-test-session', adminSession).expect(200);
 
       expect(mockGetRoutes).toHaveBeenCalled();
+    });
+
+    it('GET /admin/routes/new calls getNewRoute', async () => {
+      await request(app).get('/admin/routes/new').set('x-test-session', adminSession).expect(200);
+
+      expect(mockGetNewRoute).toHaveBeenCalled();
+    });
+
+    it('POST /admin/routes calls createRoute', async () => {
+      await request(app)
+        .post('/admin/routes')
+        .set('x-test-session', adminSession)
+        .send({ name: 'Route' })
+        .expect(200);
+
+      expect(mockCreateRoute).toHaveBeenCalled();
+    });
+
+    it('GET /admin/routes/:id/edit calls getEditRoute', async () => {
+      await request(app)
+        .get('/admin/routes/xyz/edit')
+        .set('x-test-session', adminSession)
+        .expect(200);
+
+      expect(mockGetEditRoute).toHaveBeenCalled();
+    });
+
+    it('PUT /admin/routes/:id calls updateRoute', async () => {
+      await request(app)
+        .put('/admin/routes/xyz')
+        .set('x-test-session', adminSession)
+        .send({ name: 'Route edit' })
+        .expect(200);
+
+      expect(mockUpdateRoute).toHaveBeenCalled();
     });
   });
 

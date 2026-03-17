@@ -5,9 +5,14 @@ import {
   createCollector,
   getEditCollector,
   updateCollector,
+  deleteCollector,
 } from '../controllers/admin.controller.js';
 import validate from '../middleware/validate.js';
-import { createCollectorSchema, updateCollectorSchema } from '../schemas/collector.schema.js';
+import {
+  createCollectorSchema,
+  updateCollectorSchema,
+  deleteCollectorSchema,
+} from '../schemas/collector.schema.js';
 
 // ============================================
 // Admin Collectors Router — Pago Ya
@@ -21,5 +26,6 @@ router.get('/new', getNewCollector);
 router.post('/', validate(createCollectorSchema), createCollector);
 router.get('/:id/edit', getEditCollector);
 router.put('/:id', validate(updateCollectorSchema), updateCollector);
+router.delete('/:id', validate(deleteCollectorSchema), deleteCollector);
 
 export default router;
