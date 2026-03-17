@@ -61,20 +61,6 @@ app.use(compression());
 // --- Method Override (PUT/DELETE desde formularios EJS) ---
 app.use(methodOverride('_method'));
 
-// --- Rate Limiter global ---
-app.use(
-  rateLimit({
-    windowMs: 15 * 60 * 1000,
-    max: 100,
-    standardHeaders: true,
-    legacyHeaders: false,
-    message: { success: false, message: 'Demasiadas solicitudes, intente de nuevo más tarde' },
-  }),
-);
-
-// --- Archivos estáticos ---
-app.use(express.static(join(__dirname, '..', 'public')));
-
 // ============================================
 // SESIONES
 // ============================================
@@ -82,9 +68,32 @@ app.use(express.static(join(__dirname, '..', 'public')));
 // Fly.io (y la mayoría de PaaS) terminan TLS en el proxy y reenvían HTTP al
 // contenedor. Sin trust proxy Express no marca la conexión como segura y las
 // cookies con secure:true nunca se envían al navegador.
+// IMPORTANTE: trust proxy debe declararse ANTES del rate limiter para que
+// express-rate-limit lea la IP real del cliente desde X-Forwarded-For.
+// Sin esto, todos los usuarios comparten la IP del proxy de Fly.io y el
+// límite global se agota instantáneamente para todos.
 if (env.NODE_ENV === 'production') {
   app.set('trust proxy', 1);
 }
+
+// --- Rate Limiter global ---
+// 300 requests cada 15 min por IP real: suficiente para uso normal del panel
+// (navegación + AJAX + submit de formularios) sin abrir la puerta a abuso.
+// Los endpoints de autenticación tienen su propio límite más estricto en auth.routes.js.
+app.use(
+  rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 300,
+    standardHeaders: true,
+    legacyHeaders: false,
+    // Fly.io usa Haproxy como proxy; la IP real llega en X-Forwarded-For posición [0]
+    keyGenerator: (req) => req.ip,
+    message: { success: false, message: 'Demasiadas solicitudes, intente de nuevo más tarde' },
+  }),
+);
+
+// --- Archivos estáticos ---
+app.use(express.static(join(__dirname, '..', 'public')));
 
 // Almacena sesiones en PostgreSQL con connect-pg-simple (nunca en memoria).
 const PgSession = connectPgSimple(session);
