@@ -46,6 +46,108 @@
     });
   };
 
+  /**
+   * Traduce el valor del enum PaymentFrequency a un label legible en español.
+   * @param {string} frequency
+   * @returns {string}
+   */
+  const frequencyLabel = (frequency) => {
+    const labels = {
+      DAILY: 'Diario',
+      WEEKLY: 'Semanal',
+      BIWEEKLY: 'Quincenal',
+      MONTHLY: 'Mensual',
+    };
+    return labels[frequency] ?? frequency;
+  };
+
+  /* ── Auto-relleno de plazo y hint dinámico ──────────────────────── */
+
+  /**
+   * Cuenta días hábiles (lun-sáb) en un rango [startExclusive, endInclusive].
+   * Aproximación sin festivos — el engine del servidor aplica los festivos reales.
+   *
+   * @param {Date} from - Fecha de inicio (no incluida)
+   * @param {Date} to   - Fecha de fin (incluida)
+   * @returns {number}
+   */
+  const countBusinessDaysApprox = (from, to) => {
+    let count = 0;
+    const cursor = new Date(from);
+    cursor.setDate(cursor.getDate() + 1); // día siguiente al desembolso
+    while (cursor <= to) {
+      const dow = cursor.getDay();
+      // Solo el domingo (0) es excluido en el modelo de microcrédito colombiano
+      if (dow !== 0) count += 1;
+      cursor.setDate(cursor.getDate() + 1);
+    }
+    return count;
+  };
+
+  /**
+   * Calcula el número estimado de cuotas dado una frecuencia y un plazo en meses.
+   * Usa la fecha de desembolso actual del formulario para DAILY.
+   *
+   * @param {string} frequency - DAILY | WEEKLY | BIWEEKLY | MONTHLY
+   * @param {number} months    - Plazo en meses
+   * @returns {number}
+   */
+  const estimatePaymentCount = (frequency, months) => {
+    if (frequency === 'MONTHLY') return months;
+    if (frequency === 'BIWEEKLY') return months * 2;
+    if (frequency === 'WEEKLY') return months * 4;
+    // DAILY: conteo real sin festivos desde la fecha de desembolso actual
+    const dateStr = document.getElementById('disbursementDate')?.value;
+    const start = dateStr ? new Date(dateStr) : new Date();
+    const end = new Date(start);
+    end.setMonth(end.getMonth() + months);
+    return countBusinessDaysApprox(start, end);
+  };
+
+  /**
+   * Actualiza el párrafo de ayuda (#termMonths-hint) con el conteo estimado
+   * de cuotas según la frecuencia y el plazo seleccionados.
+   */
+  const updateTermHint = () => {
+    const hint = document.getElementById('termMonths-hint');
+    if (!hint) return;
+
+    const frequency = document.getElementById('paymentFrequency')?.value;
+    const months = Number.parseInt(document.getElementById('termMonths')?.value, 10);
+
+    if (!frequency || Number.isNaN(months) || months <= 0) {
+      hint.textContent = 'Selecciona la frecuencia para ver las cuotas estimadas.';
+      hint.className = 'mt-1 text-xs text-gray-400';
+      return;
+    }
+
+    const count = estimatePaymentCount(frequency, months);
+    const freqLabel = frequencyLabel(frequency).toLowerCase();
+
+    hint.textContent = `≈ ${count} cuota${count !== 1 ? 's' : ''} ${freqLabel}${frequency === 'DAILY' ? 's (días hábiles aprox.)' : 'es'}`;
+    hint.className = 'mt-1 text-xs text-brand-green font-medium';
+  };
+
+  /**
+   * Al cambiar la frecuencia, auto-rellena termMonths con 1 (si está vacío)
+   * y actualiza el hint.
+   */
+  const onFrequencyChange = () => {
+    const termInput = document.getElementById('termMonths');
+    if (termInput && termInput.value === '') {
+      termInput.value = '1';
+    }
+    updateTermHint();
+  };
+
+  // Conectar los listeners de auto-relleno una vez que el DOM está listo
+  document.getElementById('paymentFrequency')?.addEventListener('change', onFrequencyChange);
+  document.getElementById('termMonths')?.addEventListener('input', updateTermHint);
+  document.getElementById('disbursementDate')?.addEventListener('change', updateTermHint);
+
+  // Si la página carga con valores ya definidos (ej. formData tras error), mostrar hint de inmediato
+  updateTermHint();
+
   /* ── Mostrar / ocultar estado de carga ──────────────────────────── */
 
   const setLoadingState = (loading) => {
@@ -69,11 +171,13 @@
    *   totalAmount: string,
    *   totalInterest: string,
    *   installmentAmount: string,
-   *   expectedEndDate: string
+   *   expectedEndDate: string,
+   *   numberOfPayments: number
    * }} data
+   * @param {string} frequency - Valor del enum PaymentFrequency seleccionado
    */
-  const renderSchedule = (data) => {
-    const { schedule, totalAmount, totalInterest, installmentAmount, expectedEndDate } = data;
+  const renderSchedule = (data, frequency) => {
+    const { schedule, totalAmount, totalInterest, installmentAmount, expectedEndDate, numberOfPayments } = data;
 
     /* --- Resumen superior --- */
     const summaryHtml = `
@@ -128,13 +232,15 @@
           <h3 class="text-base font-semibold text-brand-navy">
             📋 Previsualización del cronograma
           </h3>
-          <span class="text-xs text-gray-400">(${schedule.length} cuotas)</span>
+          <span class="text-xs bg-blue-50 text-blue-700 border border-blue-200 rounded px-2 py-0.5 font-medium">
+            ${frequencyLabel(frequency)}
+          </span>
+          <span class="text-xs text-gray-400">(${numberOfPayments} cuotas calculadas automáticamente)</span>
         </div>
         ${summaryHtml}
         ${tableHtml}
         <p class="mt-3 text-xs text-gray-400">
-          ⚠️ Los días hábiles se calcularán en el servidor al crear el préstamo.
-          Esta previsualización es orientativa.
+          ⚠️ Esta previsualización es orientativa. Los festivos definitivos se confirman al crear el préstamo.
         </p>
       </div>`;
 
@@ -166,26 +272,33 @@
    *   principalAmount: string,
    *   interestRate: string,
    *   paymentFrequency: string,
-   *   amortizationType: string,
-   *   numberOfPayments: string,
+   *   termMonths: string,
    *   disbursementDate: string
    * }|null}
    */
   const collectFormData = () => {
     const get = (id) => (document.getElementById(id)?.value ?? '').trim();
 
+    // Etiquetas legibles para mostrar en mensajes de error al usuario
+    const fieldLabels = {
+      principalAmount: 'Capital prestado',
+      interestRate: 'Tasa de interés',
+      paymentFrequency: 'Frecuencia de pago',
+      termMonths: 'Plazo (meses)',
+      disbursementDate: 'Fecha de desembolso',
+    };
+
     const payload = {
       principalAmount: get('principalAmount'),
       interestRate: get('interestRate'),
       paymentFrequency: get('paymentFrequency'),
-      amortizationType: get('amortizationType'),
-      numberOfPayments: get('numberOfPayments'),
+      termMonths: get('termMonths'),
       disbursementDate: get('disbursementDate'),
     };
 
     const missing = Object.entries(payload)
       .filter(([, v]) => v === '')
-      .map(([k]) => k);
+      .map(([k]) => fieldLabels[k] ?? k);
 
     if (missing.length > 0) {
       renderError(
@@ -216,12 +329,14 @@
 
       const json = await response.json();
 
-      if (!response.ok || !json.success) {
-        renderError(json.message ?? 'Error al calcular el cronograma.');
+      // apiResponse devuelve { data, meta, error } — no tiene campo "success"
+      // El request fue exitoso si HTTP 2xx y el campo error es null
+      if (!response.ok || json.error !== null) {
+        renderError(json.error?.message ?? 'Error al calcular el cronograma.');
         return;
       }
 
-      renderSchedule(json.data);
+      renderSchedule(json.data, payload.paymentFrequency);
     } catch (err) {
       renderError('No se pudo conectar con el servidor. Intenta de nuevo.');
     } finally {

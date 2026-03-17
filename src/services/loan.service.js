@@ -160,8 +160,8 @@ export const getNewLoanFormData = async (organizationId) => {
  * Crea un préstamo junto con su cronograma de amortización en una transacción.
  *
  * @param {string} organizationId - UUID de la organización
- * @param {{ clientId: string, collectorId: string, principalAmount: number,
- *   interestRate: number, numberOfPayments: number, disbursementDate: string,
+ * @param {{ clientId: string, collectorId: string, principalAmount: string,
+ *   interestRate: string, termMonths: number, disbursementDate: Date,
  *   paymentFrequency: string, amortizationType: string, notes?: string }} data
  * @returns {Promise<import('@prisma/client').Loan>}
  */
@@ -171,7 +171,7 @@ export const createLoan = async (organizationId, data) => {
     collectorId,
     principalAmount,
     interestRate,
-    numberOfPayments,
+    termMonths,
     disbursementDate,
     paymentFrequency,
     amortizationType,
@@ -180,9 +180,10 @@ export const createLoan = async (organizationId, data) => {
 
   const amortization = generateFixedDailySchedule({
     principal: principalAmount,
-    totalRate: interestRate,
-    termDays: numberOfPayments,
+    monthlyRate: interestRate,
+    termMonths,
     startDate: disbursementDate,
+    frequency: paymentFrequency,
   });
 
   const principalDec = new Decimal(principalAmount);
@@ -205,7 +206,8 @@ export const createLoan = async (organizationId, data) => {
         totalPaid: '0.00',
         outstandingBalance: totalAmountDec.toFixed(2),
         moraAmount: '0.00',
-        numberOfPayments,
+        // Guardar el número de cuotas calculado por el engine según la frecuencia
+        numberOfPayments: amortization.numberOfPayments,
         paidPayments: 0,
         disbursementDate: new Date(disbursementDate),
         expectedEndDate: new Date(amortization.expectedEndDate),
@@ -262,19 +264,19 @@ export const getNewPaymentFormData = async (organizationId) => {
 };
 
 /**
- * Genera una previsualización del cronograma de amortización sin persistir en BD.
- * Centraliza la llamada al engine financiero para que el controller no acceda a él directamente.
+ * Genera una previsualización del cronograma sin persistir en BD.
  *
- * @param {{ principalAmount: number, interestRate: number,
- *   numberOfPayments: number, disbursementDate: string }} data
- * @returns {object} Resultado del motor de amortización
+ * @param {{ principalAmount: string, interestRate: string,
+ *   termMonths: number, disbursementDate: Date, paymentFrequency: string }} data
+ * @returns {AmortizationResult}
  */
 export const previewAmortizationSchedule = (data) =>
   generateFixedDailySchedule({
     principal: data.principalAmount,
-    totalRate: data.interestRate,
-    termDays: data.numberOfPayments,
+    monthlyRate: data.interestRate,
+    termMonths: data.termMonths,
     startDate: data.disbursementDate,
+    frequency: data.paymentFrequency ?? 'DAILY',
   });
 
 /**

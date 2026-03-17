@@ -1,4 +1,5 @@
 import { jest, describe, it, expect, beforeEach } from '@jest/globals';
+import Decimal from 'decimal.js';
 
 // --- Mocks ---
 const mockFindUniqueOrThrow = jest.fn();
@@ -95,7 +96,7 @@ describe('calculateAndUpdateLoanMora', () => {
 
     expect(result.overdueSchedules).toBe(1);
     // Con saldo impago de 15000 y días vencidos > 0, la mora debe ser > 0
-    expect(parseFloat(result.moraAmount)).toBeGreaterThan(0);
+    expect(new Decimal(result.moraAmount).toNumber()).toBeGreaterThan(0);
   });
 
   it('ignora cuotas con saldo totalmente pagado aunque estén vencidas', async () => {
@@ -131,7 +132,7 @@ describe('calculateAndUpdateLoanMora', () => {
     const result = await calculateAndUpdateLoanMora(LOAN_ID);
 
     expect(result.overdueSchedules).toBe(2);
-    expect(parseFloat(result.moraAmount)).toBeGreaterThan(0);
+    expect(new Decimal(result.moraAmount).toNumber()).toBeGreaterThan(0);
   });
 
   it('retorna el loanId correcto en el resultado', async () => {
@@ -158,15 +159,11 @@ describe('calculateAndUpdateLoanMora', () => {
     await calculateAndUpdateLoanMora(LOAN_ID);
 
     // sched-1 (vencida): moraCharged debe ser > 0
-    const overdueCall = mockScheduleUpdate.mock.calls.find(
-      (c) => c[0].where.id === 'sched-1',
-    );
-    expect(parseFloat(overdueCall[0].data.moraCharged)).toBeGreaterThan(0);
+    const overdueCall = mockScheduleUpdate.mock.calls.find((c) => c[0].where.id === 'sched-1');
+    expect(new Decimal(overdueCall[0].data.moraCharged).toNumber()).toBeGreaterThan(0);
 
     // sched-2 (futura): moraCharged debe resetearse a '0.00'
-    const futureCall = mockScheduleUpdate.mock.calls.find(
-      (c) => c[0].where.id === 'sched-2',
-    );
+    const futureCall = mockScheduleUpdate.mock.calls.find((c) => c[0].where.id === 'sched-2');
     expect(futureCall[0].data.moraCharged).toBe('0.00');
   });
 

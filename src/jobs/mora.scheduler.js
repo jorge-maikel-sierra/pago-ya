@@ -24,34 +24,38 @@ const scheduleMoraJobs = async () => {
     select: { id: true, name: true },
   });
 
-  for (const org of organizations) {
-    const jobId = `mora-daily-${org.id}`;
+  // Encolar jobs en paralelo — BullMQ garantiza idempotencia por jobId
+  await Promise.all(
+    organizations.map((org) => {
+      const jobId = `mora-daily-${org.id}`;
 
-    // Job repetible: cada día a las 02:00 UTC
-    await moraQueue.add(
-      'calculate',
-      { organizationId: org.id },
-      {
-        jobId,
-        repeat: { pattern: '0 2 * * *' },
-        removeOnComplete: { count: 7 },
-        removeOnFail: { count: 30 },
-      },
-    );
+      const repeatJob = moraQueue.add(
+        'calculate',
+        { organizationId: org.id },
+        {
+          jobId,
+          repeat: { pattern: '0 2 * * *' },
+          removeOnComplete: { count: 7 },
+          removeOnFail: { count: 30 },
+        },
+      );
 
-    // Job inmediato al arrancar: cubre mora acumulada mientras el servidor estuvo inactivo
-    await moraQueue.add(
-      'calculate',
-      { organizationId: org.id },
-      {
-        jobId: `${jobId}-startup-${Date.now()}`,
-        removeOnComplete: true,
-        removeOnFail: { count: 5 },
-      },
-    );
+      // Job inmediato al arrancar: cubre mora acumulada mientras el servidor estuvo inactivo
+      const startupJob = moraQueue.add(
+        'calculate',
+        { organizationId: org.id },
+        {
+          jobId: `${jobId}-startup-${Date.now()}`,
+          removeOnComplete: true,
+          removeOnFail: { count: 5 },
+        },
+      );
 
-    console.log(`[MoraScheduler] Jobs programados para org "${org.name}" (${org.id})`);
-  }
+      console.log(`[MoraScheduler] Jobs programados para org "${org.name}" (${org.id})`);
+
+      return Promise.all([repeatJob, startupJob]);
+    }),
+  );
 
   await moraQueue.close();
 };

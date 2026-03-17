@@ -22,23 +22,22 @@ const createLoanSchema = z.object({
     .number({ required_error: 'principalAmount es obligatorio' })
     .positive('principalAmount debe ser mayor a 0')
     .transform(String),
+  // Tasa de interés MENSUAL — se multiplica por el número de meses en el engine
   interestRate: z
     .number({ required_error: 'interestRate es obligatorio' })
     .positive('interestRate debe ser mayor a 0')
     .max(1, 'interestRate no puede superar 1 (100%)')
     .transform(String),
-  numberOfPayments: z
-    .number({ required_error: 'numberOfPayments es obligatorio' })
-    .int('numberOfPayments debe ser un entero')
-    .positive('numberOfPayments debe ser mayor a 0')
-    .max(365, 'numberOfPayments no puede superar 365'),
+  // Plazo en meses — el engine calcula automáticamente el número de cuotas
+  termMonths: z
+    .number({ required_error: 'termMonths es obligatorio' })
+    .int('termMonths debe ser un entero')
+    .positive('termMonths debe ser mayor a 0')
+    .max(24, 'termMonths no puede superar 24 meses'),
   // Aceptar la fecha en formato YYYY-MM-DD desde el formulario HTML.
-  // Usamos preprocess para transformar el string a Date y luego validar
-  // con z.date() — así evitamos errores 422 al enviar la previsualización.
   disbursementDate: z.preprocess(
     (val) => {
       if (typeof val === 'string') {
-        // Construir Date desde YYYY-MM-DD
         const parts = val.split('-').map((p) => Number(p));
         if (parts.length === 3 && parts.every((n) => Number.isFinite(n))) {
           const [year, month, day] = parts;
@@ -60,12 +59,14 @@ const createLoanSchema = z.object({
       }),
     })
     .default('DAILY'),
+  // Interés simple siempre usa cuota fija — no se expone al usuario
   amortizationType: z
     .enum(AMORTIZATION_TYPES, {
       errorMap: () => ({
         message: `amortizationType debe ser uno de: ${AMORTIZATION_TYPES.join(', ')}`,
       }),
     })
+    .optional()
     .default('FIXED'),
   notes: z.string().max(1000, 'notes no puede superar 1000 caracteres').optional(),
 });

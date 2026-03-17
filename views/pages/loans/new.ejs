@@ -219,7 +219,7 @@
             %
           </span>
         </div>
-        <p class="mt-1 text-xs text-gray-400">Interés total sobre el capital (ej.&nbsp;5 = 5% del total).</p>
+        <p class="mt-1 text-xs text-gray-400">Interés mensual sobre el capital (ej.&nbsp;10 = 10% por mes).</p>
       </div>
 
       <!-- paymentFrequency: Frecuencia de pago (enum PaymentFrequency) -->
@@ -243,42 +243,36 @@
         </select>
       </div>
 
-      <!-- amortizationType: Tipo de amortización (enum AmortizationType) -->
-      <div>
-        <label for="amortizationType" class="block text-sm font-medium text-gray-700 mb-1">
-          Tipo de amortización <span class="text-red-500">*</span>
-        </label>
-        <select
-          id="amortizationType"
-          name="amortizationType"
-          required
-          class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm
-                 focus:outline-none focus:ring-2 focus:ring-brand-green focus:border-brand-green
-                 bg-white"
-        >
-          <option value="">— Selecciona el tipo —</option>
-          <option value="FIXED" <%= formData && formData.amortizationType === 'FIXED' ? 'selected' : '' %>>Cuota fija (capital&nbsp;+&nbsp;interés constante)</option>
-          <option value="DECLINING_BALANCE" <%= formData && formData.amortizationType === 'DECLINING_BALANCE' ? 'selected' : '' %>>Saldo decreciente (interés sobre saldo)</option>
-        </select>
-      </div>
+      <!-- amortizationType: siempre FIXED (interés simple) — campo oculto -->
+      <input type="hidden" name="amortizationType" value="FIXED" />
 
-      <!-- numberOfPayments: Número de cuotas -->
+      <!-- termMonths: Plazo en meses — el engine calcula cuotas automáticamente -->
       <div>
-        <label for="numberOfPayments" class="block text-sm font-medium text-gray-700 mb-1">
-          Número de cuotas <span class="text-red-500">*</span>
+        <label for="termMonths" class="block text-sm font-medium text-gray-700 mb-1">
+          Plazo <span class="text-red-500">*</span>
         </label>
-        <input
-          id="numberOfPayments"
-          type="number"
-          name="numberOfPayments"
-          min="1"
-          step="1"
-            placeholder="30"
-            value="<%= formData ? formData.numberOfPayments : '' %>"
+        <div class="relative">
+          <input
+            id="termMonths"
+            type="number"
+            name="termMonths"
+            min="1"
+            max="24"
+            step="1"
+            placeholder="1"
+            value="<%= formData ? formData.termMonths : '' %>"
             required
-          class="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm shadow-sm
-                 focus:outline-none focus:ring-2 focus:ring-brand-green focus:border-brand-green"
-        />
+            class="w-full px-3 py-2 pr-16 rounded-lg border border-gray-300 text-sm shadow-sm
+                   focus:outline-none focus:ring-2 focus:ring-brand-green focus:border-brand-green"
+          />
+          <span class="absolute inset-y-0 right-3 flex items-center text-gray-400 text-sm pointer-events-none">
+            mes(es)
+          </span>
+        </div>
+        <%# loan-calculator.js actualiza este párrafo dinámicamente al cambiar frecuencia o plazo %>
+        <p id="termMonths-hint" class="mt-1 text-xs text-gray-400">
+          Selecciona la frecuencia para ver las cuotas estimadas.
+        </p>
       </div>
 
       <!-- disbursementDate: Fecha de desembolso -->
@@ -291,7 +285,7 @@
           type="date"
           name="disbursementDate"
             required
-            value="<%= formData ? formData.disbursementDate : '' %>"
+            value="<%= formData ? formData.disbursementDate : new Date().toISOString().slice(0, 10) %>"
             class="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm shadow-sm
                  focus:outline-none focus:ring-2 focus:ring-brand-green focus:border-brand-green"
         />

@@ -196,16 +196,15 @@ const getNewLoan = asyncHandler(async (req, res) => {
  * @param {import('express').Response} res
  */
 const createLoan = asyncHandler(async (req, res) => {
-  // Zod coerce convierte strings del formulario HTML a number — evita Number() manual
   const parsed = createLoanSchema.safeParse({
     clientId: req.body.clientId,
     collectorId: req.body.collectorId,
     principalAmount: +req.body.principalAmount,
-    // Convertir porcentaje a fracción para el engine financiero (ej. 5 -> 0.05)
+    // El formulario envía porcentaje (ej. 10 = 10%/mes). Convertir a fracción (0.10)
     interestRate: +req.body.interestRate / 100,
     paymentFrequency: req.body.paymentFrequency,
     amortizationType: req.body.amortizationType,
-    numberOfPayments: Number.parseInt(req.body.numberOfPayments, 10),
+    termMonths: Number.parseInt(req.body.termMonths, 10),
     disbursementDate: req.body.disbursementDate,
     notes: req.body.notes || undefined,
   });
@@ -263,15 +262,20 @@ const getLoan = asyncHandler(async (req, res) => {
  * @param {import('express').Response} res
  */
 const previewLoan = asyncHandler(async (req, res) => {
-  const previewSchema = createLoanSchema.omit({ clientId: true, collectorId: true, notes: true });
+  // amortizationType no se expone al usuario — siempre se usa interés simple (FIXED)
+  const previewSchema = createLoanSchema.omit({
+    clientId: true,
+    collectorId: true,
+    notes: true,
+    amortizationType: true,
+  });
 
   const parsed = previewSchema.safeParse({
     principalAmount: +req.body.principalAmount,
-    // El formulario envía la tasa en porcentaje (ej. 5 = 5%). Convertir a fracción (0.05)
+    // El formulario envía porcentaje (ej. 10 = 10%/mes). Convertir a fracción (0.10)
     interestRate: +req.body.interestRate / 100,
     paymentFrequency: req.body.paymentFrequency,
-    amortizationType: req.body.amortizationType,
-    numberOfPayments: Number.parseInt(req.body.numberOfPayments, 10),
+    termMonths: Number.parseInt(req.body.termMonths, 10),
     disbursementDate: req.body.disbursementDate,
   });
 

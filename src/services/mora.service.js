@@ -24,8 +24,8 @@ import { getDaysOverdue, calcMora } from '../engine/mora.js';
  * @param {string} loanId - UUID del préstamo a procesar
  * @returns {Promise<MoraUpdateResult>}
  */
-export const calculateAndUpdateLoanMora = async (loanId) => {
-  return prisma.$transaction(async (tx) => {
+export const calculateAndUpdateLoanMora = async (loanId) =>
+  prisma.$transaction(async (tx) => {
     const loan = await tx.loan.findUniqueOrThrow({
       where: { id: loanId },
       select: {
@@ -46,32 +46,18 @@ export const calculateAndUpdateLoanMora = async (loanId) => {
     const dailyRate = new Decimal(loan.interestRate);
     const today = new Date().toISOString().slice(0, 10);
 
-    let totalMora = new Decimal(0);
-    let overdueCount = 0;
-
-    // Calcular mora por cuota y actualizar moraCharged en paralelo
-    const scheduleUpdates = [];
-
-    for (const schedule of loan.paymentSchedule) {
-      const daysOverdue = getDaysOverdue(
-        schedule.dueDate.toISOString().slice(0, 10),
-        today,
-      );
-
-      // La mora se calcula sobre el saldo impago de la cuota
+    // Calcular el resultado de mora para cada cuota sin await en el loop
+    const scheduleResults = loan.paymentSchedule.map((schedule) => {
+      const daysOverdue = getDaysOverdue(schedule.dueDate.toISOString().slice(0, 10), today);
       const unpaidOnSchedule = new Decimal(schedule.amountDue).minus(
         new Decimal(schedule.amountPaid),
       );
 
-      if (daysOverdue <= 0 || unpaidOnSchedule.lte(0)) {
+      const isOverdueWithBalance = daysOverdue > 0 && unpaidOnSchedule.gt(0);
+
+      if (!isOverdueWithBalance) {
         // Sin mora: limpiar moraCharged si la cuota ya no está vencida
-        scheduleUpdates.push(
-          tx.paymentSchedule.update({
-            where: { id: schedule.id },
-            data: { moraCharged: '0.00' },
-          }),
-        );
-        continue;
+        return { scheduleId: schedule.id, moraCharged: '0.00', isOverdue: false };
       }
 
       const { moraAmount: schedMora } = calcMora({
@@ -80,19 +66,24 @@ export const calculateAndUpdateLoanMora = async (loanId) => {
         daysOverdue,
       });
 
-      totalMora = totalMora.plus(new Decimal(schedMora));
-      overdueCount += 1;
+      return { scheduleId: schedule.id, moraCharged: schedMora, isOverdue: true };
+    });
 
-      // Persistir mora calculada en la cuota para que la vista la muestre
-      scheduleUpdates.push(
+    // Persistir todas las actualizaciones de cuotas en paralelo
+    await Promise.all(
+      scheduleResults.map((r) =>
         tx.paymentSchedule.update({
-          where: { id: schedule.id },
-          data: { moraCharged: schedMora },
+          where: { id: r.scheduleId },
+          data: { moraCharged: r.moraCharged },
         }),
-      );
-    }
+      ),
+    );
 
-    await Promise.all(scheduleUpdates);
+    const overdueResults = scheduleResults.filter((r) => r.isOverdue);
+    const totalMora = overdueResults.reduce(
+      (acc, r) => acc.plus(new Decimal(r.moraCharged)),
+      new Decimal(0),
+    );
 
     const updatedLoan = await tx.loan.update({
       where: { id: loanId },
@@ -103,10 +94,9 @@ export const calculateAndUpdateLoanMora = async (loanId) => {
     return {
       loanId: updatedLoan.id,
       moraAmount: updatedLoan.moraAmount.toString(),
-      overdueSchedules: overdueCount,
+      overdueSchedules: overdueResults.length,
     };
   });
-};
 
 /**
  * Obtiene los IDs de todos los préstamos activos de una organización
@@ -149,21 +139,26 @@ export const findActiveLoansWithOverdueSchedules = async (organizationId) => {
 export const processMoraForOrganization = async (organizationId) => {
   const loanIds = await findActiveLoansWithOverdueSchedules(organizationId);
 
-  let processed = 0;
-  let errors = 0;
-  let totalMora = new Decimal(0);
-
-  for (const loanId of loanIds) {
-    try {
-      const result = await calculateAndUpdateLoanMora(loanId);
-      totalMora = totalMora.plus(new Decimal(result.moraAmount));
-      processed += 1;
-    } catch (err) {
-      // Un error en un préstamo no debe detener el procesamiento del lote
-      console.error(`[MoraService] Error calculando mora para préstamo ${loanId}:`, err.message);
-      errors += 1;
-    }
-  }
+  // Procesar préstamos en serie con reduce para aislar errores por préstamo
+  // sin usar await-in-loop (cada iteración encadena la promesa anterior)
+  const { processed, errors, totalMora } = await loanIds.reduce(
+    async (accPromise, loanId) => {
+      const acc = await accPromise;
+      try {
+        const result = await calculateAndUpdateLoanMora(loanId);
+        return {
+          processed: acc.processed + 1,
+          errors: acc.errors,
+          totalMora: acc.totalMora.plus(new Decimal(result.moraAmount)),
+        };
+      } catch (err) {
+        // Un error en un préstamo no debe detener el procesamiento del lote
+        console.error(`[MoraService] Error calculando mora para préstamo ${loanId}:`, err.message);
+        return { ...acc, errors: acc.errors + 1 };
+      }
+    },
+    Promise.resolve({ processed: 0, errors: 0, totalMora: new Decimal(0) }),
+  );
 
   return {
     processed,

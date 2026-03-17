@@ -17,37 +17,39 @@ import dayjs from 'dayjs';
  * @property {string} totalInterest - Total de intereses cobrados
  * @property {string} installmentAmount - Monto fijo por cuota (antes del ajuste de la última)
  * @property {string} expectedEndDate - Fecha de la última cuota (ISO 8601: YYYY-MM-DD)
+ * @property {number} numberOfPayments - Cuotas calculadas automáticamente
  */
 
 /**
- * @typedef {object} FixedDailyParams
- * @property {string|number} principal - Monto del capital prestado
- * @property {string|number} totalRate - Tasa de interés TOTAL del préstamo (ej: 0.05 para 5% total)
- * @property {number} termDays - Número de cuotas (días hábiles de pago)
- * @property {string} startDate - Fecha de desembolso (YYYY-MM-DD).
- *   Primera cuota = siguiente día hábil
- * @property {string[]} [holidays] - Lista de fechas festivas (YYYY-MM-DD) a excluir
+ * @typedef {object} LoanScheduleParams
+ * @property {string|number} principal   - Capital prestado
+ * @property {string|number} monthlyRate - Tasa de interés MENSUAL (ej: 0.10 = 10% por mes)
+ * @property {number}        termMonths  - Plazo del préstamo en meses (ej: 1, 2, 3)
+ * @property {string|Date}   startDate   - Fecha de desembolso (YYYY-MM-DD o Date)
+ * @property {'DAILY'|'WEEKLY'|'BIWEEKLY'|'MONTHLY'} [frequency='DAILY'] - Frecuencia de pago
+ * @property {string[]}      [holidays]  - Festivos YYYY-MM-DD (solo aplica a DAILY)
  */
 
 /**
- * Determina si una fecha es día hábil (no fin de semana, no festivo).
+ * Determina si una fecha es día hábil (lun-sáb, no festivo).
+ * Los sábados SÍ son laborables en el modelo de microcrédito diario colombiano.
  *
- * @param {dayjs.Dayjs} date - Fecha a evaluar
- * @param {Set<string>} holidaySet - Set de fechas festivas en formato YYYY-MM-DD
- * @returns {boolean} true si es día hábil
+ * @param {dayjs.Dayjs} date
+ * @param {Set<string>} holidaySet
+ * @returns {boolean}
  */
 const isBusinessDay = (date, holidaySet) => {
-  const dayOfWeek = date.day();
-  if (dayOfWeek === 0 || dayOfWeek === 6) return false;
+  // Solo el domingo (0) es excluido; los sábados cuentan como días de cobro
+  if (date.day() === 0) return false;
   return !holidaySet.has(date.format('YYYY-MM-DD'));
 };
 
 /**
- * Obtiene el siguiente día hábil a partir de una fecha dada.
+ * Avanza al siguiente día hábil (lun-sáb sin festivos).
  *
- * @param {dayjs.Dayjs} date - Fecha de inicio
- * @param {Set<string>} holidaySet - Set de fechas festivas
- * @returns {dayjs.Dayjs} Siguiente día hábil
+ * @param {dayjs.Dayjs} date
+ * @param {Set<string>} holidaySet
+ * @returns {dayjs.Dayjs}
  */
 const nextBusinessDay = (date, holidaySet) => {
   let next = date.add(1, 'day');
@@ -58,76 +60,127 @@ const nextBusinessDay = (date, holidaySet) => {
 };
 
 /**
- * Genera un cronograma de amortización fija diaria (cuota fija).
+ * Cuenta los días hábiles entre startDate (exclusive) y endDate (inclusive).
  *
- * En este sistema de "cuota fija", el interés se calcula como porcentaje TOTAL
- * sobre el capital (interés simple), luego se divide en cuotas iguales.
+ * @param {dayjs.Dayjs} startDate - Fecha de desembolso (no cuenta)
+ * @param {dayjs.Dayjs} endDate   - Último día del plazo (cuenta si es hábil)
+ * @param {Set<string>} holidaySet
+ * @returns {number}
+ */
+const countBusinessDaysBetween = (startDate, endDate, holidaySet) => {
+  let count = 0;
+  let cursor = startDate.add(1, 'day');
+  while (!cursor.isAfter(endDate)) {
+    if (isBusinessDay(cursor, holidaySet)) count += 1;
+    cursor = cursor.add(1, 'day');
+  }
+  return count;
+};
+
+/**
+ * Calcula el número de cuotas según la frecuencia de pago y el plazo en meses.
  *
- * REGLAS:
- * - Usa exclusivamente Decimal.js para todos los cálculos monetarios.
- * - No accede a base de datos ni variables de entorno (función pura).
- * - Los días de pago son solo días hábiles (lun-vie, excluyendo festivos).
+ * - DAILY:    días hábiles (lun-sáb sin festivos) dentro del plazo
+ * - WEEKLY:   4 semanas por mes
+ * - BIWEEKLY: 2 quincenas por mes
+ * - MONTHLY:  1 cuota por mes
  *
- * @param {FixedDailyParams} params
+ * @param {'DAILY'|'WEEKLY'|'BIWEEKLY'|'MONTHLY'} frequency
+ * @param {number}      termMonths
+ * @param {dayjs.Dayjs} startDate
+ * @param {Set<string>} holidaySet
+ * @returns {number}
+ */
+const calcNumberOfPayments = (frequency, termMonths, startDate, holidaySet) => {
+  if (frequency === 'MONTHLY') return termMonths;
+  if (frequency === 'BIWEEKLY') return termMonths * 2;
+  if (frequency === 'WEEKLY') return termMonths * 4;
+  // DAILY: días hábiles reales en el plazo
+  const endDate = startDate.add(termMonths, 'month');
+  return countBusinessDaysBetween(startDate, endDate, holidaySet);
+};
+
+/**
+ * Genera un cronograma de amortización con cuota fija e interés simple.
+ *
+ * LÓGICA FINANCIERA:
+ *   - El usuario ingresa el plazo en MESES y la tasa de interés MENSUAL.
+ *   - El sistema calcula cuántas cuotas corresponden según la frecuencia.
+ *   - Interés total = capital × tasa mensual × meses.
+ *   - Cuota fija   = (capital + interés total) ÷ número de cuotas.
+ *
+ * Ejemplo: $3.000.000 al 10%/mes por 1 mes, DAILY (~26 días hábiles)
+ *   → interés = 300.000 → total = 3.300.000 → cuota ≈ 126.923,08
+ *
+ * Ejemplo: $3.000.000 al 10%/mes por 2 meses, MONTHLY
+ *   → interés = 600.000 → total = 3.600.000 → 2 cuotas de 1.800.000
+ *
+ * @param {LoanScheduleParams} params
  * @returns {AmortizationResult}
  * @throws {Error} Si los parámetros son inválidos
  */
 const generateFixedDailySchedule = ({
   principal,
-  totalRate,
-  termDays,
+  monthlyRate,
+  termMonths,
   startDate,
+  frequency = 'DAILY',
   holidays = [],
 }) => {
   const principalDec = new Decimal(principal);
-  const rateDec = new Decimal(totalRate);
-  const term = Number(termDays);
+  const rateDec = new Decimal(monthlyRate);
+  const months = Number(termMonths);
 
-  if (principalDec.lte(0)) {
-    throw new Error('El capital (principal) debe ser mayor a cero');
-  }
-  if (rateDec.lt(0)) {
-    throw new Error('La tasa total (totalRate) no puede ser negativa');
-  }
-  if (!Number.isInteger(term) || term <= 0) {
-    throw new Error('El plazo (termDays) debe ser un entero positivo');
-  }
-  if (!dayjs(startDate).isValid()) {
-    throw new Error('La fecha de inicio (startDate) no es válida');
-  }
+  if (principalDec.lte(0)) throw new Error('El capital (principal) debe ser mayor a cero');
+  if (rateDec.lt(0)) throw new Error('La tasa mensual (monthlyRate) no puede ser negativa');
+  if (!Number.isInteger(months) || months <= 0)
+    throw new Error('El plazo (termMonths) debe ser un entero positivo');
+  if (!dayjs(startDate).isValid()) throw new Error('La fecha de inicio (startDate) no es válida');
 
   const holidaySet = new Set(holidays);
+  const startDayjs = dayjs(startDate);
 
-  // Interés simple: capital × tasa total (NO multiplicado por el plazo)
-  const totalInterest = principalDec.mul(rateDec);
+  // Interés total = capital × tasa mensual × número de meses
+  const totalInterest = principalDec.mul(rateDec).mul(months);
   const totalAmount = principalDec.plus(totalInterest);
 
-  const installmentAmount = totalAmount.div(term).toDecimalPlaces(2, Decimal.ROUND_HALF_UP);
+  // Número de cuotas calculado automáticamente según la frecuencia y el plazo
+  const term = calcNumberOfPayments(frequency, months, startDayjs, holidaySet);
+  if (term <= 0) throw new Error('No se encontraron días de pago en el plazo indicado');
 
-  const dailyInterest = totalInterest.div(term).toDecimalPlaces(2, Decimal.ROUND_HALF_UP);
-  const dailyPrincipal = installmentAmount.minus(dailyInterest);
+  const installmentAmount = totalAmount.div(term).toDecimalPlaces(2, Decimal.ROUND_HALF_UP);
+  const interestPerInstallment = totalInterest.div(term).toDecimalPlaces(2, Decimal.ROUND_HALF_UP);
+  const principalPerInstallment = installmentAmount.minus(interestPerInstallment);
 
   const schedule = [];
-  let currentDate = dayjs(startDate);
+  let currentDate = startDayjs;
   let accumulatedPrincipal = new Decimal(0);
   let accumulatedInterest = new Decimal(0);
 
   for (let i = 1; i <= term; i += 1) {
-    currentDate = nextBusinessDay(currentDate, holidaySet);
+    if (frequency === 'DAILY') {
+      currentDate = nextBusinessDay(currentDate, holidaySet);
+    } else if (frequency === 'WEEKLY') {
+      currentDate = currentDate.add(1, 'week');
+    } else if (frequency === 'BIWEEKLY') {
+      currentDate = currentDate.add(2, 'week');
+    } else {
+      currentDate = currentDate.add(1, 'month');
+    }
 
     const isLast = i === term;
-
     let cuotaPrincipal;
     let cuotaInterest;
     let cuotaAmount;
 
     if (isLast) {
+      // La última cuota absorbe el redondeo acumulado para que el total sea exacto
       cuotaPrincipal = principalDec.minus(accumulatedPrincipal);
       cuotaInterest = totalInterest.minus(accumulatedInterest);
       cuotaAmount = cuotaPrincipal.plus(cuotaInterest);
     } else {
-      cuotaPrincipal = dailyPrincipal;
-      cuotaInterest = dailyInterest;
+      cuotaPrincipal = principalPerInstallment;
+      cuotaInterest = interestPerInstallment;
       cuotaAmount = installmentAmount;
     }
 
@@ -149,7 +202,8 @@ const generateFixedDailySchedule = ({
     totalInterest: totalInterest.toFixed(2),
     installmentAmount: installmentAmount.toFixed(2),
     expectedEndDate: schedule[schedule.length - 1].dueDate,
+    numberOfPayments: term,
   };
 };
 
-export { generateFixedDailySchedule, isBusinessDay, nextBusinessDay };
+export { generateFixedDailySchedule, isBusinessDay, nextBusinessDay, calcNumberOfPayments };
