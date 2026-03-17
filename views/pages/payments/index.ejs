@@ -202,7 +202,10 @@ function pageLink(p) {
             <%
               const methodInfo = METHOD_BADGE[payment.paymentMethod]
                 || { bg: 'bg-gray-100', text: 'text-gray-500', label: payment.paymentMethod };
-              const hasMora = parseFloat(payment.moraAmount) > 0;
+
+              // payment.moraAmount es la mora efectivamente cobrada en este pago (fuente de verdad)
+              const moraAmount = Number(payment.moraAmount ?? 0);
+              const hasMora = !Number.isNaN(moraAmount) && moraAmount > 0;
             %>
             <tr class="hover:bg-gray-50 transition-colors">
 
@@ -236,7 +239,7 @@ function pageLink(p) {
               <!-- Mora -->
               <td class="px-4 py-3 text-right">
                 <% if (hasMora) { %>
-                  <span class="text-red-600 font-medium"><%= formatCOP(payment.moraAmount) %></span>
+                  <span class="text-red-600 font-medium"><%= formatCOP(moraAmount) %></span>
                 <% } else { %>
                   <span class="text-gray-400">—</span>
                 <% } %>

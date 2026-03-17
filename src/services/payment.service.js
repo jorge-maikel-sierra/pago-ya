@@ -249,6 +249,14 @@ const batchSync = async (payments, collectorId) => {
 export const registerAdminPayment = async (input) => {
   const { loanId, amountPaid, paymentDate, collectorId, paymentMethod, notes } = input;
   const amountDecimal = new Decimal(amountPaid);
+  const parseLocalDateTime = (value) => {
+    if (!value) return new Date();
+    if (value.includes('T')) return new Date(value);
+    const [y, m, d] = value.split('-').map(Number);
+    const now = new Date();
+    return new Date(y, (m || 1) - 1, d || 1, now.getHours(), now.getMinutes(), now.getSeconds());
+  };
+  const collectedAt = parseLocalDateTime(paymentDate);
 
   return prisma.$transaction(async (tx) => {
     const loan = await tx.loan.findUnique({
@@ -306,7 +314,7 @@ export const registerAdminPayment = async (input) => {
         moraAmount: newMora.toFixed(2),
         paidPayments: { increment: 1 },
         status: isFullyPaid ? 'COMPLETED' : 'ACTIVE',
-        ...(isFullyPaid && { actualEndDate: new Date(paymentDate) }),
+        ...(isFullyPaid && { actualEndDate: collectedAt }),
       },
     });
 
@@ -331,7 +339,7 @@ export const registerAdminPayment = async (input) => {
           id: schedule.id,
           amountPaid: newAmountPaid.toFixed(2),
           isPaid,
-          paidAt: isPaid ? new Date(paymentDate) : null,
+          paidAt: isPaid ? collectedAt : null,
         });
 
         return updates;
@@ -360,7 +368,7 @@ export const registerAdminPayment = async (input) => {
         totalReceived: amountDecimal.toFixed(2),
         paymentMethod: paymentMethod || 'CASH',
         notes: notes || null,
-        collectedAt: new Date(paymentDate),
+        collectedAt,
         telegramSent: false,
       },
     });

@@ -12,6 +12,7 @@ import { initTelegramBot } from './config/telegram.js';
 import startTelegramWorker from './jobs/telegramWorker.js';
 import startMoraWorker from './jobs/moraWorker.js';
 import startPdfWorker from './jobs/pdfWorker.js';
+import scheduleMoraJobs from './jobs/mora.scheduler.js';
 
 // ============================================
 // CONFIGURACIÓN
@@ -141,6 +142,10 @@ const startServer = async () => {
       // BullMQ requiere Redis — solo iniciar workers si Redis está disponible
       startWorkers();
       console.log('[Server] ✓ Workers iniciados');
+
+      // Programa jobs de mora: inmediato (startup) + diario (02:00 UTC)
+      await scheduleMoraJobs();
+      console.log('[Server] ✓ Jobs de mora programados');
     } else {
       console.warn('[Server] Redis no configurado — workers BullMQ desactivados');
     }
