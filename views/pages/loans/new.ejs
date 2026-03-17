@@ -42,11 +42,11 @@
       </h2>
     </div>
 
-    <div class="p-6 grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-5">
+    <div class="p-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-5">
 
       <!-- clientId: Cliente (typeahead) -->
-      <div class="sm:col-span-2">
-        <label for="clientSearch" class="block text-sm font-medium text-gray-700 mb-1">
+      <div>
+        <label for="clientSearch" class="form-label">
           Cliente <span class="text-red-500">*</span>
         </label>
         <input
@@ -57,9 +57,7 @@
           placeholder="Escribe nombre, cédula o NIT..."
           value="<%= formData && formData.clientName ? formData.clientName : '' %>"
           required
-          class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm
-                 focus:outline-none focus:ring-2 focus:ring-brand-green focus:border-brand-green
-                 bg-white"
+          class="form-input"
         />
         <input type="hidden" id="clientId" name="clientId" value="<%= formData ? formData.clientId : '' %>" />
         <div id="clientSuggestions" class="mt-1 bg-white border border-gray-200 rounded-md shadow-sm hidden max-h-60 overflow-auto text-sm"></div>
@@ -68,7 +66,7 @@
             id="clientId_noscript"
             name="clientId"
             required
-            class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm bg-white mt-2"
+            class="form-select mt-2"
           >
             <option value="">— Selecciona un cliente —</option>
             <% clients.forEach(function(client) { %>
@@ -79,7 +77,7 @@
           </select>
         </noscript>
         <% if (!clients || clients.length === 0) { %>
-          <p class="mt-1 text-xs text-amber-600">
+          <p class="form-hint text-amber-600">
             No hay clientes activos registrados.
             <a href="/admin/clients/new" class="underline hover:text-amber-800">Registrar cliente</a>
           </p>
@@ -87,8 +85,8 @@
       </div>
 
       <!-- collectorId: Cobrador (typeahead) -->
-      <div class="sm:col-span-1">
-        <label for="collectorSearch" class="block text-sm font-medium text-gray-700 mb-1">
+      <div>
+        <label for="collectorSearch" class="form-label">
           Cobrador <span class="text-red-500">*</span>
         </label>
         <input
@@ -99,9 +97,7 @@
           placeholder="Escribe nombre o cédula..."
           value="<%= formData && formData.collectorName ? formData.collectorName : '' %>"
           required
-          class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm
-                 focus:outline-none focus:ring-2 focus:ring-brand-green focus:border-brand-green
-                 bg-white"
+          class="form-input"
         />
         <input type="hidden" id="collectorId" name="collectorId" value="<%= formData ? formData.collectorId : '' %>" />
         <div id="collectorSuggestions" class="mt-1 bg-white border border-gray-200 rounded-md shadow-sm hidden max-h-60 overflow-auto text-sm"></div>
@@ -110,7 +106,7 @@
             id="collectorId_noscript"
             name="collectorId"
             required
-            class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm bg-white mt-2"
+            class="form-select mt-2"
           >
             <option value="">— Selecciona un cobrador —</option>
             <% collectors.forEach(function(collector) { %>
@@ -121,15 +117,15 @@
           </select>
         </noscript>
         <% if (!collectors || collectors.length === 0) { %>
-          <p class="mt-1 text-xs text-amber-600">
+          <p class="form-hint text-amber-600">
             No hay cobradores registrados.
           </p>
         <% } %>
       </div>
 
       <!-- routeId: Ruta de cobro (typeahead, opcional) -->
-      <div class="sm:col-span-1">
-        <label for="routeSearch" class="block text-sm font-medium text-gray-700 mb-1">
+      <div>
+        <label for="routeSearch" class="form-label">
           Ruta de cobro
           <span class="text-xs text-gray-400 font-normal">(opcional)</span>
         </label>
@@ -140,9 +136,7 @@
           type="text"
           placeholder="Escribe nombre o código de ruta..."
           value="<%= formData && formData.routeName ? formData.routeName : '' %>"
-          class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm
-                 focus:outline-none focus:ring-2 focus:ring-brand-green focus:border-brand-green
-                 bg-white"
+          class="form-input"
         />
         <input type="hidden" id="routeId" name="routeId" value="<%= formData ? formData.routeId : '' %>" />
         <div id="routeSuggestions" class="mt-1 bg-white border border-gray-200 rounded-md shadow-sm hidden max-h-60 overflow-auto text-sm"></div>
@@ -150,7 +144,7 @@
           <select
             id="routeId_noscript"
             name="routeId"
-            class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm bg-white mt-2"
+            class="form-select mt-2"
           >
             <option value="">— Sin ruta asignada —</option>
             <% routes.forEach(function(route) { %>
@@ -169,11 +163,9 @@
       </h2>
     </div>
 
-    <div class="p-6 grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-5">
-
-      <!-- principalAmount: Capital prestado -->
+    <div class="p-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-x-6 gap-y-5">
       <div>
-        <label for="principalAmount" class="block text-sm font-medium text-gray-700 mb-1">
+        <label for="principalAmount" class="form-label">
           Capital prestado (COP) <span class="text-red-500">*</span>
         </label>
         <div class="relative">
@@ -189,16 +181,15 @@
             placeholder="500000.00"
             value="<%= formData ? formData.principalAmount : '' %>"
             required
-            class="w-full pl-7 pr-3 py-2 rounded-lg border border-gray-300 text-sm shadow-sm
-                   focus:outline-none focus:ring-2 focus:ring-brand-green focus:border-brand-green"
+            class="form-input pl-7"
           />
         </div>
-        <p class="mt-1 text-xs text-gray-400">Monto neto desembolsado al cliente.</p>
+        <p class="form-hint">Monto neto desembolsado al cliente.</p>
       </div>
 
       <!-- interestRate: Tasa de interés total del préstamo -->
       <div>
-        <label for="interestRate" class="block text-sm font-medium text-gray-700 mb-1">
+        <label for="interestRate" class="form-label">
           Tasa de interés total (%) <span class="text-red-500">*</span>
         </label>
         <div class="relative">
@@ -212,28 +203,25 @@
             placeholder="5"
             value="<%= formData ? formData.interestRate : '' %>"
             required
-            class="w-full pl-3 pr-8 py-2 rounded-lg border border-gray-300 text-sm shadow-sm
-                   focus:outline-none focus:ring-2 focus:ring-brand-green focus:border-brand-green"
+            class="form-input pr-8"
           />
           <span class="absolute inset-y-0 right-3 flex items-center text-gray-400 text-sm pointer-events-none">
             %
           </span>
         </div>
-        <p class="mt-1 text-xs text-gray-400">Interés mensual sobre el capital (ej.&nbsp;10 = 10% por mes).</p>
+        <p class="form-hint">Interés mensual sobre el capital (ej.&nbsp;10 = 10% por mes).</p>
       </div>
 
       <!-- paymentFrequency: Frecuencia de pago (enum PaymentFrequency) -->
       <div>
-        <label for="paymentFrequency" class="block text-sm font-medium text-gray-700 mb-1">
+        <label for="paymentFrequency" class="form-label">
           Frecuencia de pago <span class="text-red-500">*</span>
         </label>
         <select
           id="paymentFrequency"
           name="paymentFrequency"
           required
-          class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm
-                 focus:outline-none focus:ring-2 focus:ring-brand-green focus:border-brand-green
-                 bg-white"
+          class="form-select"
         >
           <option value="">— Selecciona la frecuencia —</option>
           <option value="DAILY" <%= formData && formData.paymentFrequency === 'DAILY' ? 'selected' : '' %>>Diario</option>
@@ -248,7 +236,7 @@
 
       <!-- termMonths: Plazo en meses — el engine calcula cuotas automáticamente -->
       <div>
-        <label for="termMonths" class="block text-sm font-medium text-gray-700 mb-1">
+        <label for="termMonths" class="form-label">
           Plazo <span class="text-red-500">*</span>
         </label>
         <div class="relative">
@@ -262,32 +250,30 @@
             placeholder="1"
             value="<%= formData ? formData.termMonths : '' %>"
             required
-            class="w-full px-3 py-2 pr-16 rounded-lg border border-gray-300 text-sm shadow-sm
-                   focus:outline-none focus:ring-2 focus:ring-brand-green focus:border-brand-green"
+            class="form-input pr-16"
           />
           <span class="absolute inset-y-0 right-3 flex items-center text-gray-400 text-sm pointer-events-none">
             mes(es)
           </span>
         </div>
         <%# loan-calculator.js actualiza este párrafo dinámicamente al cambiar frecuencia o plazo %>
-        <p id="termMonths-hint" class="mt-1 text-xs text-gray-400">
+        <p id="termMonths-hint" class="form-hint">
           Selecciona la frecuencia para ver las cuotas estimadas.
         </p>
       </div>
 
       <!-- disbursementDate: Fecha de desembolso -->
       <div>
-        <label for="disbursementDate" class="block text-sm font-medium text-gray-700 mb-1">
+        <label for="disbursementDate" class="form-label">
           Fecha de desembolso <span class="text-red-500">*</span>
         </label>
         <input
           id="disbursementDate"
           type="date"
           name="disbursementDate"
-            required
-            value="<%= formData ? formData.disbursementDate : new Date().toISOString().slice(0, 10) %>"
-            class="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm shadow-sm
-                 focus:outline-none focus:ring-2 focus:ring-brand-green focus:border-brand-green"
+          required
+          value="<%= formData ? formData.disbursementDate : new Date().toISOString().slice(0, 10) %>"
+          class="form-input"
         />
       </div>
 
@@ -295,7 +281,7 @@
 
     <!-- ── Sección 3: Notas internas (opcional) ────────────────────── -->
     <div class="px-6 pb-6">
-      <label for="notes" class="block text-sm font-medium text-gray-700 mb-1">
+      <label for="notes" class="form-label">
         Notas internas
         <span class="text-xs text-gray-400 font-normal">(opcional)</span>
       </label>
@@ -304,9 +290,7 @@
         name="notes"
         rows="3"
         placeholder="Observaciones sobre el préstamo o el cliente..."
-        class="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm shadow-sm
-               focus:outline-none focus:ring-2 focus:ring-brand-green focus:border-brand-green
-               resize-none"
+        class="form-textarea"
       ><%= formData ? formData.notes : '' %></textarea>
     </div>
 
@@ -317,7 +301,7 @@
       <button
         type="button"
         id="btn-preview"
-        class="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-2.5
+        class="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-3
                rounded-lg border border-brand-navy text-brand-navy text-sm font-semibold
                hover:bg-brand-navy hover:text-white transition-colors"
       >
@@ -325,19 +309,14 @@
       </button>
 
       <div class="flex items-center gap-3 w-full sm:w-auto">
-        <a href="/admin/loans"
-           class="flex-1 sm:flex-none inline-flex items-center justify-center px-5 py-2.5
-                  rounded-lg border border-gray-300 text-gray-600 text-sm font-medium
-                  hover:bg-gray-50 transition-colors">
+        <a href="/admin/loans" class="flex-1 sm:flex-none btn-secondary">
           Cancelar
         </a>
         <!-- Crear Préstamo (submit) -->
         <button
           type="submit"
           id="btn-submit"
-          class="flex-1 sm:flex-none inline-flex items-center justify-center gap-2 px-6 py-2.5
-                 rounded-lg bg-brand-green text-white text-sm font-semibold shadow-sm
-                 hover:bg-green-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          class="flex-1 sm:flex-none btn-primary"
         >
           💾 Crear Préstamo
         </button>

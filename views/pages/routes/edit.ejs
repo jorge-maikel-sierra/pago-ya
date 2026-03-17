@@ -1,51 +1,85 @@
 <%- include('../../layouts/header') %>
 
 <div class="p-4 sm:p-6 lg:p-8 space-y-6">
-  <div class="flex items-center gap-2">
-    <a href="/admin/routes" class="inline-flex items-center gap-1 text-sm text-gray-400 hover:text-brand-navy transition-colors">← Volver a rutas</a>
+
+  <!-- =========================================
+       ENCABEZADO
+  ========================================= -->
+  <div class="page-header">
+    <a href="/admin/routes" class="btn-back">←</a>
+    <div>
+      <h1 class="page-title">Editar Ruta</h1>
+      <p class="page-subtitle">Modifica los datos de la ruta.</p>
+    </div>
   </div>
 
-  <div>
-    <h1 class="text-2xl font-bold text-brand-navy">Editar Ruta</h1>
-    <p class="text-sm text-gray-500 mt-1">Modifica los datos de la ruta.</p>
-  </div>
-
+  <!-- =========================================
+       MENSAJE DE ERROR
+  ========================================= -->
   <% if (flashError) { %>
-    <div class="rounded-lg bg-red-50 border border-red-200 p-4 text-sm text-red-800">
-      <p class="font-medium"><%= flashError %></p>
+    <div class="flash-error" role="alert">
+      <div class="flash-error-content">
+        <span class="text-red-600 text-lg">❌</span>
+        <p class="flash-error-text"><%= flashError %></p>
+      </div>
     </div>
   <% } %>
 
-  <form method="POST" action="/admin/routes/<%= route.id %>?_method=PUT" class="bg-white rounded-xl border border-gray-200 shadow-sm p-6 grid grid-cols-1 gap-4">
-    <div>
-      <label for="name" class="block text-sm font-medium text-gray-700 mb-1">Nombre de la ruta <span class="text-red-500">*</span></label>
-      <input id="name" name="name" type="text" required value="<%= route.name %>" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm" />
+  <!-- =========================================
+       FORMULARIO
+  ========================================= -->
+  <form method="POST" action="/admin/routes/<%= route.id %>?_method=PUT"
+        class="form-card grid grid-cols-1 gap-5 max-w-2xl">
+
+    <!-- Nombre -->
+    <div class="form-group">
+      <label for="name" class="form-label">
+        Nombre de la ruta <span class="text-red-500">*</span>
+      </label>
+      <input id="name" name="name" type="text" required
+             value="<%= route.name %>"
+             placeholder="Ej: Ruta Centro Norte"
+             class="form-input" />
     </div>
 
-    <div>
-      <label for="description" class="block text-sm font-medium text-gray-700 mb-1">Descripción</label>
-      <textarea id="description" name="description" rows="3" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"><%= route.description || '' %></textarea>
+    <!-- Descripción -->
+    <div class="form-group">
+      <label for="description" class="form-label">Descripción</label>
+      <textarea id="description" name="description" rows="3"
+                class="form-textarea"><%= route.description || '' %></textarea>
     </div>
 
-    <div>
-      <label for="collectorId" class="block text-sm font-medium text-gray-700 mb-1">Asignar cobrador (opcional)</label>
-      <select id="collectorId" name="collectorId" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm">
+    <!-- Cobrador -->
+    <div class="form-group">
+      <label for="collectorId" class="form-label">Asignar cobrador</label>
+      <select id="collectorId" name="collectorId" class="form-select">
         <option value="">— Sin asignar —</option>
         <% collectors.forEach(function(c) { %>
-          <option value="<%= c.id %>" <%= route.collectorId === c.id ? 'selected' : '' %>><%= c.firstName %> <%= c.lastName %></option>
+          <option value="<%= c.id %>" <%= route.collectorId === c.id ? 'selected' : '' %>>
+            <%= c.firstName %> <%= c.lastName %>
+          </option>
         <% }); %>
       </select>
     </div>
 
+    <!-- Estado -->
     <div class="flex items-center gap-3">
-      <input id="isActive" name="isActive" type="checkbox" <%= route.isActive ? 'checked' : '' %> class="h-4 w-4" />
-      <label for="isActive" class="text-sm text-gray-700">Activa</label>
+      <input id="isActive" name="isActive" type="checkbox"
+             <%= route.isActive ? 'checked' : '' %>
+             class="w-5 h-5 rounded border-gray-300 text-brand-green accent-brand-green focus:ring-brand-green" />
+      <label for="isActive" class="text-sm text-gray-700">Ruta activa</label>
     </div>
 
-    <div class="flex justify-end gap-3 mt-2">
-      <a href="/admin/routes" class="inline-flex items-center justify-center px-5 py-2.5 rounded-lg border border-gray-300 text-gray-600 text-sm">Cancelar</a>
-      <button type="submit" class="inline-flex items-center justify-center px-5 py-2.5 rounded-lg bg-brand-green text-white text-sm">Guardar cambios</button>
+    <!-- Botones -->
+    <div class="flex flex-col sm:flex-row gap-3 pt-4 border-t border-gray-100">
+      <button type="submit" class="flex-1 btn-primary">
+        💾 Guardar Cambios
+      </button>
+      <a href="/admin/routes" class="flex-1 btn-secondary justify-center">
+        Cancelar
+      </a>
     </div>
+
   </form>
 
 </div>

@@ -50,18 +50,16 @@ const DOCUMENT_OPTIONS = [
        FORMULARIO
   ========================================= -->
   <form method="POST" action="/admin/clients"
-    class="bg-white rounded-xl border border-gray-200 shadow-sm p-6 max-w-5xl">
+    class="form-card max-w-5xl">
 
     <!-- Información Personal -->
-    <div class="mb-8">
-      <h2 class="text-lg font-semibold text-brand-navy mb-4 pb-2 border-b border-gray-100">
-        👤 Información Personal
-      </h2>
-  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+    <div class="form-section">
+      <h2 class="form-section-title">👤 Información Personal</h2>
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
 
         <!-- Nombre -->
-        <div>
-          <label for="firstName" class="block text-sm font-medium text-gray-700 mb-2">
+        <div class="form-group">
+          <label for="firstName" class="form-label">
             Nombre <span class="text-red-500">*</span>
           </label>
           <input
@@ -72,15 +70,13 @@ const DOCUMENT_OPTIONS = [
             minlength="1"
             maxlength="80"
             placeholder="Ej: Juan"
-            class="w-full px-4 py-3 rounded-lg border border-gray-300 text-sm text-gray-700
-                   focus:ring-2 focus:ring-brand-green focus:border-brand-green focus:outline-none
-                   transition"
+            class="form-input"
           />
         </div>
 
         <!-- Apellido -->
-        <div>
-          <label for="lastName" class="block text-sm font-medium text-gray-700 mb-2">
+        <div class="form-group">
+          <label for="lastName" class="form-label">
             Apellido <span class="text-red-500">*</span>
           </label>
           <input
@@ -91,24 +87,20 @@ const DOCUMENT_OPTIONS = [
             minlength="1"
             maxlength="80"
             placeholder="Ej: Pérez García"
-            class="w-full px-4 py-3 rounded-lg border border-gray-300 text-sm text-gray-700
-                   focus:ring-2 focus:ring-brand-green focus:border-brand-green focus:outline-none
-                   transition"
+            class="form-input"
           />
         </div>
 
         <!-- Tipo de Documento -->
-        <div>
-          <label for="documentType" class="block text-sm font-medium text-gray-700 mb-2">
+        <div class="form-group">
+          <label for="documentType" class="form-label">
             Tipo de Documento <span class="text-red-500">*</span>
           </label>
           <select
             id="documentType"
             name="documentType"
             required
-            class="w-full px-4 py-3 rounded-lg border border-gray-300 text-sm text-gray-700
-                   focus:ring-2 focus:ring-brand-green focus:border-brand-green focus:outline-none
-                   transition select-control"
+            class="form-select"
           >
             <% DOCUMENT_OPTIONS.forEach(opt => { %>
               <option value="<%= opt.value %>" <%= opt.value === 'CC' ? 'selected' : '' %>>
@@ -119,8 +111,8 @@ const DOCUMENT_OPTIONS = [
         </div>
 
         <!-- Número de Documento -->
-        <div>
-          <label for="documentNumber" class="block text-sm font-medium text-gray-700 mb-2">
+        <div class="form-group">
+          <label for="documentNumber" class="form-label">
             Número de Documento <span class="text-red-500">*</span>
           </label>
           <input
@@ -135,17 +127,13 @@ const DOCUMENT_OPTIONS = [
             minlength="5"
             maxlength="20"
             placeholder="Ej: 1234567890"
-            class="w-full px-4 py-3 rounded-lg border border-gray-300 text-sm text-gray-700
-                   focus:ring-2 focus:ring-brand-green focus:border-brand-green focus:outline-none
-                   transition"
+            class="form-input"
           />
         </div>
 
         <!-- Teléfono -->
-        <div>
-          <label for="phone" class="block text-sm font-medium text-gray-700 mb-2">
-            Teléfono
-          </label>
+        <div class="form-group">
+          <label for="phone" class="form-label">Teléfono</label>
           <input
             type="tel"
             inputmode="numeric"
@@ -156,23 +144,17 @@ const DOCUMENT_OPTIONS = [
             name="phone"
             maxlength="20"
             placeholder="+57 300 123 4567"
-            class="w-full px-4 py-3 rounded-lg border border-gray-300 text-sm text-gray-700
-                   focus:ring-2 focus:ring-brand-green focus:border-brand-green focus:outline-none
-                   transition"
+            class="form-input"
           />
         </div>
 
         <!-- Ruta -->
-        <div>
-          <label for="routeId" class="block text-sm font-medium text-gray-700 mb-2">
-            Ruta de Cobro
-          </label>
+        <div class="form-group">
+          <label for="routeId" class="form-label">Ruta de Cobro</label>
           <select
             id="routeId"
             name="routeId"
-            class="w-full px-4 py-3 rounded-lg border border-gray-300 text-sm text-gray-700
-                   focus:ring-2 focus:ring-brand-green focus:border-brand-green focus:outline-none
-                   transition select-control"
+            class="form-select"
           >
             <option value="">Sin asignar</option>
             <% routes.forEach(route => { %>
@@ -185,15 +167,13 @@ const DOCUMENT_OPTIONS = [
     </div>
 
     <!-- Ubicación -->
-    <div class="mb-8">
-      <h2 class="text-lg font-semibold text-brand-navy mb-4 pb-2 border-b border-gray-100">
-        📍 Ubicación
-      </h2>
-  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+    <div class="form-section">
+      <h2 class="form-section-title">📍 Ubicación</h2>
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
 
         <!-- Dirección -->
-        <div>
-          <label for="address" class="block text-sm font-medium text-gray-700 mb-2">
+        <div class="form-group">
+          <label for="address" class="form-label">
             Dirección <span class="text-red-500">*</span>
           </label>
           <input
@@ -203,34 +183,26 @@ const DOCUMENT_OPTIONS = [
             required
             maxlength="255"
             placeholder="Ej: Calle 15 # 20-45, Barrio Centro"
-            class="w-full px-4 py-3 rounded-lg border border-gray-300 text-sm text-gray-700
-                   focus:ring-2 focus:ring-brand-green focus:border-brand-green focus:outline-none
-                   transition"
+            class="form-input"
           />
         </div>
 
         <!-- Barrio -->
-        <div>
-          <label for="neighborhood" class="block text-sm font-medium text-gray-700 mb-2">
-            Barrio
-          </label>
+        <div class="form-group">
+          <label for="neighborhood" class="form-label">Barrio</label>
           <input
             type="text"
             id="neighborhood"
             name="neighborhood"
             maxlength="100"
             placeholder="Ej: Centro"
-            class="w-full px-4 py-3 rounded-lg border border-gray-300 text-sm text-gray-700
-                   focus:ring-2 focus:ring-brand-green focus:border-brand-green focus:outline-none
-                   transition"
+            class="form-input"
           />
         </div>
 
         <!-- Ciudad -->
-        <div>
-          <label for="city" class="block text-sm font-medium text-gray-700 mb-2">
-            Ciudad
-          </label>
+        <div class="form-group">
+          <label for="city" class="form-label">Ciudad</label>
           <input
             type="text"
             id="city"
@@ -238,28 +210,19 @@ const DOCUMENT_OPTIONS = [
             maxlength="100"
             value="Riohacha"
             placeholder="Ej: Riohacha"
-            class="w-full px-4 py-3 rounded-lg border border-gray-300 text-sm text-gray-700
-                   focus:ring-2 focus:ring-brand-green focus:border-brand-green focus:outline-none
-                   transition"
+            class="form-input"
           />
         </div>
 
       </div>
     </div>
 
-
-  <!-- Botones de Acción -->
-  <div class="flex flex-col sm:flex-row items-center gap-3 pt-6 mt-6 border-t border-gray-100">
-      <button type="submit"
-              class="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3
-                     rounded-lg bg-brand-green text-white font-semibold text-sm
-                     shadow-sm hover:bg-green-500 transition-colors">
+    <!-- Botones de Acción -->
+    <div class="flex flex-col sm:flex-row gap-3 pt-6 border-t border-gray-100">
+      <button type="submit" class="w-full sm:w-auto btn-primary">
         💾 Crear Cliente
       </button>
-      <a href="/admin/clients"
-         class="w-full sm:w-auto inline-flex items-center justify-center px-6 py-3
-                rounded-lg border border-gray-300 text-gray-600 font-medium text-sm
-                hover:bg-gray-50 transition-colors">
+      <a href="/admin/clients" class="w-full sm:w-auto btn-secondary justify-center">
         Cancelar
       </a>
     </div>

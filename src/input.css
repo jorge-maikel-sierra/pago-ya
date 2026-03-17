@@ -3,7 +3,279 @@
 @tailwind utilities;
 
 @layer components {
-  /* Select estilizado consistente en todos los navegadores */
+
+  /* =====================================================
+     CAMPOS DE FORMULARIO
+     Clases base para mantener consistencia visual en
+     todos los formularios de la aplicación.
+  ===================================================== */
+
+  /**
+   * Contenedor de campo: label + input + hint/error.
+   * Reemplaza el <div> suelto que envuelve cada campo.
+   */
+  .form-group {
+    @apply flex flex-col gap-1.5;
+  }
+
+  /**
+   * Etiqueta de campo.
+   * Tamaño y peso consistente en todos los formularios.
+   */
+  .form-label {
+    @apply block text-sm font-medium text-gray-700;
+  }
+
+  /**
+   * Input de texto estándar.
+   * Padding, border, radius y foco unificados.
+   */
+  .form-input {
+    @apply w-full px-4 py-3 rounded-lg border border-gray-300
+           text-sm text-gray-700 bg-white
+           placeholder-gray-400
+           focus:ring-2 focus:ring-brand-green focus:border-brand-green
+           focus:outline-none transition;
+  }
+
+  /**
+   * Select estándar — incluye la flecha SVG nativa reemplazada.
+   * Extiende .form-input con la flecha personalizada.
+   */
+  .form-select {
+    @apply form-input appearance-none pr-10;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3E%3Cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.8rem center;
+    background-size: 0.9rem;
+  }
+
+  /**
+   * Textarea estándar — sin redimensionado horizontal.
+   */
+  .form-textarea {
+    @apply form-input resize-none;
+  }
+
+  /**
+   * Texto de ayuda debajo del campo (hint).
+   */
+  .form-hint {
+    @apply text-xs text-gray-400 mt-0.5;
+  }
+
+  /**
+   * Mensaje de error inline de un campo.
+   */
+  .form-error-msg {
+    @apply text-xs text-red-600 mt-0.5;
+  }
+
+  /**
+   * Sección interna del formulario (grupo de campos con título).
+   * Agrupa campos relacionados bajo un heading con separador.
+   */
+  .form-section {
+    @apply mb-8;
+  }
+
+  .form-section-title {
+    @apply text-lg font-semibold text-brand-navy mb-4 pb-2 border-b border-gray-100;
+  }
+
+  /**
+   * Contenedor blanco del formulario completo.
+   * Reemplaza: bg-white rounded-xl border border-gray-200 shadow-sm p-6
+   */
+  .form-card {
+    @apply bg-white rounded-xl border border-gray-200 shadow-sm p-6;
+  }
+
+  /* =====================================================
+     BOTONES
+     Estilos base + variantes. Todos usan el mismo
+     padding, radio y tamaño de fuente.
+  ===================================================== */
+
+  /**
+   * Botón principal — acción primaria del formulario.
+   */
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2
+           px-6 py-3 rounded-lg
+           bg-brand-green text-white text-sm font-semibold
+           shadow-sm hover:bg-green-500 focus:outline-none
+           focus:ring-2 focus:ring-brand-green focus:ring-offset-2
+           transition-colors disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  /**
+   * Botón secundario — cancelar o acción alternativa.
+   */
+  .btn-secondary {
+    @apply inline-flex items-center justify-center gap-2
+           px-6 py-3 rounded-lg
+           border border-gray-300 text-gray-600 text-sm font-medium
+           bg-white hover:bg-gray-50 focus:outline-none
+           focus:ring-2 focus:ring-brand-green focus:ring-offset-2
+           transition-colors disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  /**
+   * Botón de icono para volver atrás (← cuadrado).
+   */
+  .btn-back {
+    @apply inline-flex items-center justify-center
+           w-10 h-10 rounded-lg
+           border border-gray-300 text-gray-500
+           hover:bg-gray-50 transition-colors;
+  }
+
+  /* =====================================================
+     ENCABEZADOS DE PÁGINA
+  ===================================================== */
+
+  /**
+   * Contenedor del encabezado de página con botón volver + título.
+   */
+  .page-header {
+    @apply flex items-center gap-4;
+  }
+
+  .page-title {
+    @apply text-2xl font-bold text-brand-navy;
+  }
+
+  .page-subtitle {
+    @apply text-sm text-gray-500 mt-1;
+  }
+
+  /* =====================================================
+     MENSAJES FLASH
+     Reutilizable en cualquier vista que muestre alertas.
+  ===================================================== */
+
+  .flash-error {
+    @apply rounded-lg bg-red-50 border border-red-200 p-4;
+  }
+
+  .flash-error-content {
+    @apply flex items-center gap-2;
+  }
+
+  .flash-error-text {
+    @apply text-sm font-medium text-red-800;
+  }
+
+  .flash-success {
+    @apply rounded-lg bg-green-50 border border-green-200 p-4;
+  }
+
+  .flash-success-text {
+    @apply text-sm font-medium text-green-800;
+  }
+
+  /* =====================================================
+     TABLAS
+  ===================================================== */
+
+  /**
+   * Tabla base con bordes y hover consistentes.
+   */
+  .table-base {
+    @apply w-full text-sm text-left;
+  }
+
+  .table-base thead {
+    @apply bg-gray-50 text-xs text-gray-500 uppercase tracking-wider;
+  }
+
+  .table-base thead th {
+    @apply px-4 py-3 font-medium;
+  }
+
+  .table-base tbody tr {
+    @apply border-t border-gray-100 hover:bg-gray-50 transition-colors;
+  }
+
+  .table-base tbody td {
+    @apply px-4 py-3 text-gray-700;
+  }
+
+  /* =====================================================
+     VARIANTES DARK — vista de Super Admin (organizations)
+     Fondo brand-navy, texto blanco, bordes gris-oscuro.
+  ===================================================== */
+
+  /**
+   * Input sobre fondo oscuro (bg-brand-navy).
+   * Usa border-gray-700 como proxy de brand-border (no registrado en theme).
+   */
+  .form-input-dark {
+    @apply w-full px-4 py-3 rounded-lg border border-gray-700
+           text-white text-sm bg-brand-navy
+           placeholder-gray-500
+           focus:ring-2 focus:ring-brand-green focus:border-brand-green
+           focus:outline-none transition;
+  }
+
+  /**
+   * Select oscuro — extiende .form-input-dark con flecha gris clara.
+   */
+  .form-select-dark {
+    @apply form-input-dark appearance-none pr-10;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3E%3Cpath stroke='%239ca3af' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.8rem center;
+    background-size: 0.9rem;
+  }
+
+  /**
+   * Etiqueta oscura — texto gris claro sobre fondo navy.
+   */
+  .form-label-dark {
+    @apply block text-sm font-medium text-gray-300;
+  }
+
+  /**
+   * Hint oscuro.
+   */
+  .form-hint-dark {
+    @apply text-xs text-gray-500 mt-0.5;
+  }
+
+  /**
+   * Título de sección sobre fondo oscuro.
+   */
+  .form-section-title-dark {
+    @apply text-lg font-semibold text-white mb-4 pb-2 border-b border-gray-700;
+  }
+
+  /**
+   * Contenedor del formulario oscuro (Super Admin).
+   * bg-[#0f1e35] = brand-surface approximation.
+   */
+  .form-card-dark {
+    @apply border border-gray-700 rounded-xl shadow-lg p-6;
+    background-color: #0f1e35;
+  }
+
+  /**
+   * Botón secundario oscuro — cancelar en vistas Super Admin.
+   */
+  .btn-secondary-dark {
+    @apply inline-flex items-center justify-center gap-2
+           px-6 py-3 rounded-lg
+           border border-gray-700 text-gray-400 text-sm font-medium
+           hover:bg-brand-navy focus:outline-none
+           focus:ring-2 focus:ring-brand-green focus:ring-offset-2
+           transition-colors;
+  }
+
+  /* =====================================================
+     COMPATIBILIDAD — mantiene .select-control funcional
+     en vistas que todavía no han sido migradas.
+  ===================================================== */
   .select-control {
     @apply appearance-none bg-white pr-10;
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3E%3Cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3E%3C/svg%3E");

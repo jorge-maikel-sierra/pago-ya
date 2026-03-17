@@ -51,18 +51,16 @@ const ROLE_OPTIONS = [
        FORMULARIO (usando method-override para PUT)
   ========================================= -->
   <form method="POST" action="/admin/users/<%= targetUser.id %>?_method=PUT"
-        class="bg-white rounded-xl border border-gray-200 shadow-sm p-6 max-w-2xl">
+        class="form-card max-w-2xl">
 
     <!-- Información Personal -->
-    <div class="mb-8">
-      <h2 class="text-lg font-semibold text-brand-navy mb-4 pb-2 border-b border-gray-100">
-        👤 Información Personal
-      </h2>
+    <div class="form-section">
+      <h2 class="form-section-title">👤 Información Personal</h2>
       <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
 
         <!-- Nombre -->
-        <div>
-          <label for="firstName" class="block text-sm font-medium text-gray-700 mb-2">
+        <div class="form-group">
+          <label for="firstName" class="form-label">
             Nombre <span class="text-red-500">*</span>
           </label>
           <input
@@ -73,15 +71,13 @@ const ROLE_OPTIONS = [
             minlength="2"
             maxlength="80"
             value="<%= targetUser.firstName %>"
-            class="w-full px-4 py-3 rounded-lg border border-gray-300 text-sm text-gray-700
-                   focus:ring-2 focus:ring-brand-green focus:border-brand-green focus:outline-none
-                   transition"
+            class="form-input"
           />
         </div>
 
         <!-- Apellido -->
-        <div>
-          <label for="lastName" class="block text-sm font-medium text-gray-700 mb-2">
+        <div class="form-group">
+          <label for="lastName" class="form-label">
             Apellido <span class="text-red-500">*</span>
           </label>
           <input
@@ -92,15 +88,13 @@ const ROLE_OPTIONS = [
             minlength="2"
             maxlength="80"
             value="<%= targetUser.lastName %>"
-            class="w-full px-4 py-3 rounded-lg border border-gray-300 text-sm text-gray-700
-                   focus:ring-2 focus:ring-brand-green focus:border-brand-green focus:outline-none
-                   transition"
+            class="form-input"
           />
         </div>
 
         <!-- Email -->
-        <div>
-          <label for="email" class="block text-sm font-medium text-gray-700 mb-2">
+        <div class="form-group">
+          <label for="email" class="form-label">
             Email <span class="text-red-500">*</span>
           </label>
           <input
@@ -110,17 +104,13 @@ const ROLE_OPTIONS = [
             required
             maxlength="100"
             value="<%= targetUser.email %>"
-            class="w-full px-4 py-3 rounded-lg border border-gray-300 text-sm text-gray-700
-                   focus:ring-2 focus:ring-brand-green focus:border-brand-green focus:outline-none
-                   transition"
+            class="form-input"
           />
         </div>
 
         <!-- Teléfono -->
-        <div>
-          <label for="phone" class="block text-sm font-medium text-gray-700 mb-2">
-            Teléfono
-          </label>
+        <div class="form-group">
+          <label for="phone" class="form-label">Teléfono</label>
           <input
             type="tel"
             id="phone"
@@ -128,9 +118,7 @@ const ROLE_OPTIONS = [
             maxlength="20"
             value="<%= targetUser.phone || '' %>"
             placeholder="+57 300 123 4567"
-            class="w-full px-4 py-3 rounded-lg border border-gray-300 text-sm text-gray-700
-                   focus:ring-2 focus:ring-brand-green focus:border-brand-green focus:outline-none
-                   transition"
+            class="form-input"
           />
         </div>
 
@@ -138,24 +126,20 @@ const ROLE_OPTIONS = [
     </div>
 
     <!-- Rol y Acceso -->
-    <div class="mb-8">
-      <h2 class="text-lg font-semibold text-brand-navy mb-4 pb-2 border-b border-gray-100">
-        🔐 Rol y Acceso
-      </h2>
+    <div class="form-section">
+      <h2 class="form-section-title">🔐 Rol y Acceso</h2>
       <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
 
         <!-- Rol -->
-        <div>
-          <label for="role" class="block text-sm font-medium text-gray-700 mb-2">
+        <div class="form-group">
+          <label for="role" class="form-label">
             Rol <span class="text-red-500">*</span>
           </label>
           <select
             id="role"
             name="role"
             required
-            class="w-full px-4 py-3 rounded-lg border border-gray-300 text-sm text-gray-700
-                   bg-white focus:ring-2 focus:ring-brand-green focus:border-brand-green
-                   focus:outline-none transition"
+            class="form-select"
           >
             <% ROLE_OPTIONS.forEach(function(r) { %>
               <option value="<%= r.value %>" <%= targetUser.role === r.value ? 'selected' : '' %>>
@@ -166,10 +150,8 @@ const ROLE_OPTIONS = [
         </div>
 
         <!-- Contraseña (opcional en edición) -->
-        <div>
-          <label for="password" class="block text-sm font-medium text-gray-700 mb-2">
-            Nueva Contraseña
-          </label>
+        <div class="form-group">
+          <label for="password" class="form-label">Nueva Contraseña</label>
           <input
             type="password"
             id="password"
@@ -177,11 +159,9 @@ const ROLE_OPTIONS = [
             minlength="6"
             maxlength="100"
             placeholder="Dejar vacío para no cambiar"
-            class="w-full px-4 py-3 rounded-lg border border-gray-300 text-sm text-gray-700
-                   focus:ring-2 focus:ring-brand-green focus:border-brand-green focus:outline-none
-                   transition"
+            class="form-input"
           />
-          <p class="mt-1 text-xs text-gray-400">Solo completa si deseas cambiar la contraseña</p>
+          <p class="form-hint">Solo completa si deseas cambiar la contraseña</p>
         </div>
 
       </div>
@@ -193,7 +173,7 @@ const ROLE_OPTIONS = [
           id="isActive"
           name="isActive"
           <%= targetUser.isActive ? 'checked' : '' %>
-          class="w-5 h-5 rounded border-gray-300 text-brand-green focus:ring-brand-green"
+          class="w-5 h-5 rounded border-gray-300 text-brand-green accent-brand-green focus:ring-brand-green"
         />
         <label for="isActive" class="text-sm text-gray-700">
           Usuario activo (puede iniciar sesión)
@@ -205,16 +185,10 @@ const ROLE_OPTIONS = [
          BOTONES DE ACCIÓN
     ========================================= -->
     <div class="flex flex-col sm:flex-row gap-3 pt-6 border-t border-gray-100">
-      <button type="submit"
-              class="flex-1 inline-flex items-center justify-center gap-2 px-6 py-3 rounded-lg
-                     bg-brand-green text-white text-sm font-semibold
-                     hover:bg-green-500 transition-colors shadow-sm">
+      <button type="submit" class="flex-1 btn-primary justify-center">
         💾 Guardar Cambios
       </button>
-      <a href="/admin/users"
-         class="flex-1 inline-flex items-center justify-center gap-2 px-6 py-3 rounded-lg
-                border border-gray-300 text-gray-600 text-sm font-medium
-                hover:bg-gray-50 transition-colors">
+      <a href="/admin/users" class="flex-1 btn-secondary justify-center">
         Cancelar
       </a>
     </div>

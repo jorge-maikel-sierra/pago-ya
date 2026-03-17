@@ -133,8 +133,7 @@ const generateFixedDailySchedule = ({
 
   if (principalDec.lte(0)) throw new Error('El capital (principal) debe ser mayor a cero');
   if (rateDec.lt(0)) throw new Error('La tasa mensual (monthlyRate) no puede ser negativa');
-  if (!Number.isInteger(months) || months <= 0)
-    throw new Error('El plazo (termMonths) debe ser un entero positivo');
+  if (!Number.isInteger(months) || months <= 0) throw new Error('El plazo (termMonths) debe ser un entero positivo');
   if (!dayjs(startDate).isValid()) throw new Error('La fecha de inicio (startDate) no es válida');
 
   const holidaySet = new Set(holidays);

@@ -24,10 +24,10 @@ const PLAN_OPTIONS = [
   <!-- =========================================
        ENCABEZADO
   ========================================= -->
-  <div class="flex items-center gap-4">
+  <div class="page-header">
     <a href="/admin/organizations"
-       class="inline-flex items-center justify-center w-10 h-10 rounded-lg border border-brand-border
-              text-gray-400 hover:bg-brand-surface transition-colors">
+       class="inline-flex items-center justify-center w-10 h-10 rounded-lg border border-gray-700
+              text-gray-400 hover:bg-brand-navy transition-colors">
       ←
     </a>
     <div>
@@ -52,18 +52,16 @@ const PLAN_OPTIONS = [
        FORMULARIO
   ========================================= -->
   <form method="POST" action="/admin/organizations"
-        class="bg-brand-surface border border-brand-border rounded-xl shadow-lg p-6 max-w-3xl">
+        class="form-card-dark max-w-3xl">
 
     <!-- Sección: Información Básica -->
-    <div class="mb-8">
-      <h2 class="text-lg font-display font-semibold text-white mb-4 pb-2 border-b border-brand-border">
-        📋 Información Básica
-      </h2>
+    <div class="form-section">
+      <h2 class="form-section-title-dark">📋 Información Básica</h2>
       <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
 
         <!-- Nombre -->
-        <div class="md:col-span-2">
-          <label for="name" class="block text-sm font-medium text-gray-300 mb-2 font-body">
+        <div class="form-group md:col-span-2">
+          <label for="name" class="form-label-dark">
             Nombre de la Organización <span class="text-red-400">*</span>
           </label>
           <input
@@ -74,127 +72,88 @@ const PLAN_OPTIONS = [
             minlength="3"
             maxlength="150"
             placeholder="Ej: Créditos El Sol S.A.S."
-            class="w-full px-4 py-3 rounded-lg bg-brand-navy border border-brand-border
-                   text-white text-sm placeholder-gray-500 font-body
-                   focus:ring-2 focus:ring-brand-green focus:border-brand-green focus:outline-none
-                   transition"
+            class="form-input-dark font-body"
           />
         </div>
 
         <!-- NIT -->
-        <div>
-          <label for="nit" class="block text-sm font-medium text-gray-300 mb-2 font-body">
-            NIT
-          </label>
+        <div class="form-group">
+          <label for="nit" class="form-label-dark">NIT</label>
           <input
             type="text"
             id="nit"
             name="nit"
             maxlength="20"
             placeholder="Ej: 900123456-1"
-            class="w-full px-4 py-3 rounded-lg bg-brand-navy border border-brand-border
-                   text-white text-sm placeholder-gray-500 font-body
-                   focus:ring-2 focus:ring-brand-green focus:border-brand-green focus:outline-none
-                   transition"
+            class="form-input-dark font-body"
           />
         </div>
 
         <!-- Teléfono -->
-        <div>
-          <label for="phone" class="block text-sm font-medium text-gray-300 mb-2 font-body">
-            Teléfono
-          </label>
+        <div class="form-group">
+          <label for="phone" class="form-label-dark">Teléfono</label>
           <input
             type="tel"
             id="phone"
             name="phone"
             maxlength="20"
             placeholder="Ej: +57 300 123 4567"
-            class="w-full px-4 py-3 rounded-lg bg-brand-navy border border-brand-border
-                   text-white text-sm placeholder-gray-500 font-body
-                   focus:ring-2 focus:ring-brand-green focus:border-brand-green focus:outline-none
-                   transition"
+            class="form-input-dark font-body"
           />
         </div>
 
         <!-- Email -->
-        <div>
-          <label for="email" class="block text-sm font-medium text-gray-300 mb-2 font-body">
-            Email
-          </label>
+        <div class="form-group">
+          <label for="email" class="form-label-dark">Email</label>
           <input
             type="email"
             id="email"
             name="email"
             maxlength="100"
             placeholder="Ej: admin@empresa.com"
-            class="w-full px-4 py-3 rounded-lg bg-brand-navy border border-brand-border
-                   text-white text-sm placeholder-gray-500 font-body
-                   focus:ring-2 focus:ring-brand-green focus:border-brand-green focus:outline-none
-                   transition"
+            class="form-input-dark font-body"
           />
         </div>
 
         <!-- Dirección -->
-        <div>
-          <label for="address" class="block text-sm font-medium text-gray-300 mb-2 font-body">
-            Dirección
-          </label>
+        <div class="form-group">
+          <label for="address" class="form-label-dark">Dirección</label>
           <input
             type="text"
             id="address"
             name="address"
             maxlength="255"
             placeholder="Ej: Cra 10 #45-67, Bogotá"
-            class="w-full px-4 py-3 rounded-lg bg-brand-navy border border-brand-border
-                   text-white text-sm placeholder-gray-500 font-body
-                   focus:ring-2 focus:ring-brand-green focus:border-brand-green focus:outline-none
-                   transition"
+            class="form-input-dark font-body"
           />
         </div>
 
         <!-- URL del Logo -->
-        <div class="md:col-span-2">
-          <label for="logoUrl" class="block text-sm font-medium text-gray-300 mb-2 font-body">
-            URL del Logo
-          </label>
+        <div class="form-group md:col-span-2">
+          <label for="logoUrl" class="form-label-dark">URL del Logo</label>
           <input
             type="url"
             id="logoUrl"
             name="logoUrl"
             maxlength="500"
             placeholder="https://ejemplo.com/logo.png"
-            class="w-full px-4 py-3 rounded-lg bg-brand-navy border border-brand-border
-                   text-white text-sm placeholder-gray-500 font-body
-                   focus:ring-2 focus:ring-brand-green focus:border-brand-green focus:outline-none
-                   transition"
+            class="form-input-dark font-body"
           />
-          <p class="mt-1 text-xs text-gray-500 font-body">Opcional. URL pública de la imagen del logo.</p>
+          <p class="form-hint-dark font-body">Opcional. URL pública de la imagen del logo.</p>
         </div>
 
       </div>
     </div>
 
     <!-- Sección: Plan y Suscripción -->
-    <div class="mb-8">
-      <h2 class="text-lg font-display font-semibold text-white mb-4 pb-2 border-b border-brand-border">
-        💳 Plan y Suscripción
-      </h2>
+    <div class="form-section">
+      <h2 class="form-section-title-dark">💳 Plan y Suscripción</h2>
       <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
 
         <!-- Tipo de Plan -->
-        <div>
-          <label for="planType" class="block text-sm font-medium text-gray-300 mb-2 font-body">
-            Tipo de Plan
-          </label>
-          <select
-            id="planType"
-            name="planType"
-            class="w-full px-4 py-3 rounded-lg bg-brand-navy border border-brand-border
-                   text-white text-sm font-body
-                   focus:ring-2 focus:ring-brand-green focus:border-brand-green focus:outline-none
-                   transition"
-          >
+        <div class="form-group">
+          <label for="planType" class="form-label-dark">Tipo de Plan</label>
+          <select id="planType" name="planType" class="form-select-dark font-body">
             <% PLAN_OPTIONS.forEach(function(plan) { %>
               <option value="<%= plan.value %>" <%= plan.value === 'BASIC' ? 'selected' : '' %>>
                 <%= plan.label %> - <%= plan.description %>
@@ -204,37 +163,30 @@ const PLAN_OPTIONS = [
         </div>
 
         <!-- Fecha de Vencimiento -->
-        <div>
-          <label for="subscriptionEnds" class="block text-sm font-medium text-gray-300 mb-2 font-body">
+        <div class="form-group">
+          <label for="subscriptionEnds" class="form-label-dark">
             Vencimiento de Suscripción
           </label>
           <input
             type="date"
             id="subscriptionEnds"
             name="subscriptionEnds"
-            class="w-full px-4 py-3 rounded-lg bg-brand-navy border border-brand-border
-                   text-white text-sm font-body
-                   focus:ring-2 focus:ring-brand-green focus:border-brand-green focus:outline-none
-                   transition"
+            class="form-input-dark font-body"
           />
-          <p class="mt-1 text-xs text-gray-500 font-body">Dejar vacío para suscripción sin límite.</p>
+          <p class="form-hint-dark font-body">Dejar vacío para suscripción sin límite.</p>
         </div>
 
       </div>
     </div>
 
     <!-- Sección: Configuración de Mora -->
-    <div class="mb-8">
-      <h2 class="text-lg font-display font-semibold text-white mb-4 pb-2 border-b border-brand-border">
-        ⚠️ Configuración de Mora
-      </h2>
+    <div class="form-section">
+      <h2 class="form-section-title-dark">⚠️ Configuración de Mora</h2>
       <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
 
         <!-- Días de Gracia -->
-        <div>
-          <label for="moraGraceDays" class="block text-sm font-medium text-gray-300 mb-2 font-body">
-            Días de Gracia
-          </label>
+        <div class="form-group">
+          <label for="moraGraceDays" class="form-label-dark">Días de Gracia</label>
           <input
             type="number"
             id="moraGraceDays"
@@ -242,19 +194,14 @@ const PLAN_OPTIONS = [
             value="3"
             min="0"
             max="30"
-            class="w-full px-4 py-3 rounded-lg bg-brand-navy border border-brand-border
-                   text-white text-sm font-body tabular-nums
-                   focus:ring-2 focus:ring-brand-green focus:border-brand-green focus:outline-none
-                   transition"
+            class="form-input-dark font-body tabular-nums"
           />
-          <p class="mt-1 text-xs text-gray-500 font-body">Días antes de aplicar mora (0-30).</p>
+          <p class="form-hint-dark font-body">Días antes de aplicar mora (0-30).</p>
         </div>
 
         <!-- Multiplicador de Mora -->
-        <div>
-          <label for="moraMultiplier" class="block text-sm font-medium text-gray-300 mb-2 font-body">
-            Multiplicador de Mora
-          </label>
+        <div class="form-group">
+          <label for="moraMultiplier" class="form-label-dark">Multiplicador de Mora</label>
           <input
             type="number"
             id="moraMultiplier"
@@ -263,30 +210,25 @@ const PLAN_OPTIONS = [
             min="1"
             max="5"
             step="0.1"
-            class="w-full px-4 py-3 rounded-lg bg-brand-navy border border-brand-border
-                   text-white text-sm font-body tabular-nums
-                   focus:ring-2 focus:ring-brand-green focus:border-brand-green focus:outline-none
-                   transition"
+            class="form-input-dark font-body tabular-nums"
           />
-          <p class="mt-1 text-xs text-gray-500 font-body">Factor que multiplica la cuota vencida (1-5x).</p>
+          <p class="form-hint-dark font-body">Factor que multiplica la cuota vencida (1-5x).</p>
         </div>
 
       </div>
     </div>
 
     <!-- Sección: Estado -->
-    <div class="mb-8">
-      <h2 class="text-lg font-display font-semibold text-white mb-4 pb-2 border-b border-brand-border">
-        🔄 Estado
-      </h2>
+    <div class="form-section">
+      <h2 class="form-section-title-dark">🔄 Estado</h2>
       <div class="flex items-center gap-3">
         <input
           type="checkbox"
           id="isActive"
           name="isActive"
           checked
-          class="w-5 h-5 rounded border-brand-border bg-brand-navy text-brand-green
-                 focus:ring-brand-green focus:ring-offset-brand-navy"
+          class="w-5 h-5 rounded border-gray-700 bg-brand-navy text-brand-green
+                 accent-brand-green focus:ring-brand-green focus:ring-offset-brand-navy"
         />
         <label for="isActive" class="text-sm text-gray-300 font-body">
           Organización activa (puede operar en el sistema)
@@ -297,17 +239,11 @@ const PLAN_OPTIONS = [
     <!-- =========================================
          BOTONES DE ACCIÓN
     ========================================= -->
-    <div class="flex flex-col sm:flex-row gap-3 pt-6 border-t border-brand-border">
-      <button type="submit"
-              class="flex-1 inline-flex items-center justify-center gap-2 px-6 py-3 rounded-lg
-                     bg-brand-green text-white text-sm font-semibold font-body
-                     hover:bg-green-500 transition-colors shadow-md">
+    <div class="flex flex-col sm:flex-row gap-3 pt-6 border-t border-gray-700">
+      <button type="submit" class="flex-1 btn-primary justify-center font-body">
         ✅ Registrar Organización
       </button>
-      <a href="/admin/organizations"
-         class="flex-1 inline-flex items-center justify-center gap-2 px-6 py-3 rounded-lg
-                border border-brand-border text-gray-400 text-sm font-medium font-body
-                hover:bg-brand-navy transition-colors">
+      <a href="/admin/organizations" class="flex-1 btn-secondary-dark justify-center font-body">
         Cancelar
       </a>
     </div>
