@@ -201,7 +201,8 @@ const createLoan = asyncHandler(async (req, res) => {
     clientId: req.body.clientId,
     collectorId: req.body.collectorId,
     principalAmount: +req.body.principalAmount,
-    interestRate: +req.body.interestRate,
+    // Convertir porcentaje a fracción para el engine financiero (ej. 5 -> 0.05)
+    interestRate: (+req.body.interestRate) / 100,
     paymentFrequency: req.body.paymentFrequency,
     amortizationType: req.body.amortizationType,
     numberOfPayments: Number.parseInt(req.body.numberOfPayments, 10),
@@ -266,7 +267,8 @@ const previewLoan = asyncHandler(async (req, res) => {
 
   const parsed = previewSchema.safeParse({
     principalAmount: +req.body.principalAmount,
-    interestRate: +req.body.interestRate,
+    // El formulario envía la tasa en porcentaje (ej. 5 = 5%). Convertir a fracción (0.05)
+    interestRate: (+req.body.interestRate) / 100,
     paymentFrequency: req.body.paymentFrequency,
     amortizationType: req.body.amortizationType,
     numberOfPayments: Number.parseInt(req.body.numberOfPayments, 10),
@@ -278,6 +280,12 @@ const previewLoan = asyncHandler(async (req, res) => {
       field: e.path.join('.'),
       message: e.message,
     }));
+    // Loguear detalles para facilitar depuración en entornos de desarrollo
+    if (process.env.NODE_ENV !== 'production') {
+      // eslint-disable-next-line no-console
+      console.debug('[previewLoan] payload inválido', { body: req.body, errors: parsed.error.errors });
+    }
+
     return apiResponse.error(res, 'Datos de previsualización inválidos', 422, errors);
   }
 

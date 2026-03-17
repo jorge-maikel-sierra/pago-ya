@@ -43,10 +43,13 @@ const getDashboardKPIs = async (organizationId) => {
       where: { organizationId, status: 'ACTIVE' },
     }),
 
+    // Contar todos los clientes activos pertenecientes a la organización.
+    // Antes se intentaba filtrar por `loans.some` lo que omitía clientes
+    // sin préstamos asignados; usamos `organizationId` directamente.
     prisma.client.count({
       where: {
+        organizationId,
         isActive: true,
-        loans: { some: { organizationId } },
       },
     }),
 
