@@ -93,9 +93,7 @@
                   class="font-medium text-brand-navy dark:text-brand-green hover:underline">
                   <%= client.firstName %> <%= client.lastName %>
                 </a>
-                <% if (client.businessName) { %>
-                  <p class="text-xs text-gray-400 mt-0.5"><%= client.businessName %></p>
-                <% } %>
+                <!-- businessName removed from list -->
               </td>
               <td class="px-4 py-3 text-gray-600 dark:text-gray-300">
                 <span class="text-xs text-gray-400"><%= client.documentType %></span>

@@ -221,12 +221,7 @@ const progressPct = loan.numberOfPayments > 0
             <dd class="font-medium text-gray-800 text-right max-w-xs"><%= loan.client.address %></dd>
           </div>
         <% } %>
-        <% if (loan.client.businessName) { %>
-          <div class="flex justify-between px-5 py-3 text-sm">
-            <dt class="text-gray-500">Negocio</dt>
-            <dd class="font-medium text-gray-800"><%= loan.client.businessName %></dd>
-          </div>
-        <% } %>
+        <!-- businessName removed from loan client display -->
         <% if (loan.client.route) { %>
           <div class="flex justify-between px-5 py-3 text-sm">
             <dt class="text-gray-500">Ruta</dt>

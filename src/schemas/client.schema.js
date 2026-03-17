@@ -69,38 +69,8 @@ const createClientSchema = z.object({
     .or(z.literal('')),
 
   city: z.string().trim().max(100, 'La ciudad no puede superar 100 caracteres').default('Riohacha'),
-
-  referenceContact: z
-    .string()
-    .trim()
-    .max(100, 'El nombre del referido no puede superar 100 caracteres')
-    .optional()
-    .or(z.literal('')),
-
-  referencePhone: z
-    .union([
-      z
-        .string()
-        .trim()
-        .max(20, 'El teléfono del referido no puede superar 20 caracteres')
-        .regex(/^[0-9]+$/, 'El teléfono del referido debe contener solo dígitos'),
-      z.literal(''),
-    ])
-    .optional(),
-
-  businessName: z
-    .string()
-    .trim()
-    .max(150, 'El nombre del negocio no puede superar 150 caracteres')
-    .optional()
-    .or(z.literal('')),
-
-  businessAddress: z
-    .string()
-    .trim()
-    .max(255, 'La dirección del negocio no puede superar 255 caracteres')
-    .optional()
-    .or(z.literal('')),
+  // referenceContact, referencePhone, businessName and businessAddress
+  // removed: they are not used in the business logic and were causing UI clutter
 
   notes: z
     .string()
