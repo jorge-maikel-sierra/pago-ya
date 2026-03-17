@@ -210,6 +210,7 @@
       const response = await fetch('/admin/loans/preview', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
         body: JSON.stringify(payload),
       });
 
@@ -244,11 +245,23 @@
 
     const fetchSuggestions = async (url) => {
       try {
-        const res = await fetch(url, { headers: { Accept: 'application/json' } });
-        if (!res.ok) return [];
+        const res = await fetch(url, { headers: { Accept: 'application/json' }, credentials: 'same-origin' });
         const json = await res.json();
-        return json.success ? json.data : [];
+        // Depuración: mostrar status y payload para ayudar a diagnosticar por qué no hay resultados
+        console.debug('[typeahead] GET', url, 'status=', res.status, json);
+        if (!res.ok) return [];
+
+        // Soportar dos formatos de respuesta que aparecen en el códigobase:
+        // - { success: true, data: [...] }
+        // - { data: [...], meta: ..., error: ... }
+        if (json && Object.prototype.hasOwnProperty.call(json, 'success')) {
+          return json.success ? json.data ?? [] : [];
+        }
+
+        // Fallback: devolver json.data si existe
+        return json.data ?? [];
       } catch (e) {
+        console.error('[typeahead] error fetching', url, e);
         return [];
       }
     };
