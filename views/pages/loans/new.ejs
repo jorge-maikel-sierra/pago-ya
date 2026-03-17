@@ -17,6 +17,18 @@
     </div>
   </div>
 
+  <!-- Errores de validación -->
+  <% if (Array.isArray(validationErrors) && validationErrors.length > 0) { %>
+    <div class="rounded-lg bg-red-50 border border-red-200 p-4 text-sm text-red-800">
+      <p class="font-semibold mb-2">Por favor corrige los siguientes campos:</p>
+      <ul class="list-disc list-inside space-y-1">
+        <% validationErrors.forEach(function(err) { %>
+          <li><strong><%= err.field %>:</strong> <%= err.message %></li>
+        <% }); %>
+      </ul>
+    </div>
+  <% } %>
+
   <!-- Formulario principal -->
   <form id="loan-form"
         method="POST"
@@ -47,7 +59,7 @@
         >
           <option value="">— Selecciona un cliente —</option>
           <% clients.forEach(function(client) { %>
-            <option value="<%= client.id %>">
+            <option value="<%= client.id %>" <%= formData && formData.clientId === client.id ? 'selected' : '' %>>
               <%= client.lastName %>, <%= client.firstName %>
               &nbsp;(<%= client.documentNumber %>)
             </option>
@@ -76,7 +88,7 @@
         >
           <option value="">— Selecciona un cobrador —</option>
           <% collectors.forEach(function(collector) { %>
-            <option value="<%= collector.id %>">
+            <option value="<%= collector.id %>" <%= formData && formData.collectorId === collector.id ? 'selected' : '' %>>
               <%= collector.firstName %> <%= collector.lastName %>
             </option>
           <% }); %>
@@ -103,7 +115,7 @@
         >
           <option value="">— Sin ruta asignada —</option>
           <% routes.forEach(function(route) { %>
-            <option value="<%= route.id %>"><%= route.name %></option>
+            <option value="<%= route.id %>" <%= formData && formData.routeId === route.id ? 'selected' : '' %>><%= route.name %></option>
           <% }); %>
         </select>
       </div>
@@ -135,6 +147,7 @@
             min="0.01"
             step="0.01"
             placeholder="500000.00"
+            value="<%= formData ? formData.principalAmount : '' %>"
             required
             class="w-full pl-7 pr-3 py-2 rounded-lg border border-gray-300 text-sm shadow-sm
                    focus:outline-none focus:ring-2 focus:ring-brand-green focus:border-brand-green"
@@ -157,6 +170,7 @@
             max="100"
             step="0.01"
             placeholder="5"
+            value="<%= formData ? formData.interestRate : '' %>"
             required
             class="w-full pl-3 pr-8 py-2 rounded-lg border border-gray-300 text-sm shadow-sm
                    focus:outline-none focus:ring-2 focus:ring-brand-green focus:border-brand-green"
@@ -182,10 +196,10 @@
                  bg-white"
         >
           <option value="">— Selecciona la frecuencia —</option>
-          <option value="DAILY">Diario</option>
-          <option value="WEEKLY">Semanal</option>
-          <option value="BIWEEKLY">Quincenal</option>
-          <option value="MONTHLY">Mensual</option>
+          <option value="DAILY" <%= formData && formData.paymentFrequency === 'DAILY' ? 'selected' : '' %>>Diario</option>
+          <option value="WEEKLY" <%= formData && formData.paymentFrequency === 'WEEKLY' ? 'selected' : '' %>>Semanal</option>
+          <option value="BIWEEKLY" <%= formData && formData.paymentFrequency === 'BIWEEKLY' ? 'selected' : '' %>>Quincenal</option>
+          <option value="MONTHLY" <%= formData && formData.paymentFrequency === 'MONTHLY' ? 'selected' : '' %>>Mensual</option>
         </select>
       </div>
 
@@ -203,8 +217,8 @@
                  bg-white"
         >
           <option value="">— Selecciona el tipo —</option>
-          <option value="FIXED">Cuota fija (capital&nbsp;+&nbsp;interés constante)</option>
-          <option value="DECLINING_BALANCE">Saldo decreciente (interés sobre saldo)</option>
+          <option value="FIXED" <%= formData && formData.amortizationType === 'FIXED' ? 'selected' : '' %>>Cuota fija (capital&nbsp;+&nbsp;interés constante)</option>
+          <option value="DECLINING_BALANCE" <%= formData && formData.amortizationType === 'DECLINING_BALANCE' ? 'selected' : '' %>>Saldo decreciente (interés sobre saldo)</option>
         </select>
       </div>
 
@@ -219,8 +233,9 @@
           name="numberOfPayments"
           min="1"
           step="1"
-          placeholder="30"
-          required
+            placeholder="30"
+            value="<%= formData ? formData.numberOfPayments : '' %>"
+            required
           class="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm shadow-sm
                  focus:outline-none focus:ring-2 focus:ring-brand-green focus:border-brand-green"
         />
@@ -235,8 +250,9 @@
           id="disbursementDate"
           type="date"
           name="disbursementDate"
-          required
-          class="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm shadow-sm
+            required
+            value="<%= formData ? formData.disbursementDate : '' %>"
+            class="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm shadow-sm
                  focus:outline-none focus:ring-2 focus:ring-brand-green focus:border-brand-green"
         />
       </div>
@@ -257,7 +273,7 @@
         class="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm shadow-sm
                focus:outline-none focus:ring-2 focus:ring-brand-green focus:border-brand-green
                resize-none"
-      ></textarea>
+      ><%= formData ? formData.notes : '' %></textarea>
     </div>
 
     <!-- ── Botones de acción ────────────────────────────────────────── -->

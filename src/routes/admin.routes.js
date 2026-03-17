@@ -60,8 +60,8 @@ router.get('/routes', getRoutes);
 // --- Configuración ---
 router.get('/settings', getSettings);
 
-// --- Logout ---
-router.delete('/logout', logout);
+// --- Logout --- (POST para compatibilidad con formularios HTML)
+router.post('/logout', logout);
 
 // --- Recursos exclusivos SUPER_ADMIN ---
 router.use('/users', usersRouter);

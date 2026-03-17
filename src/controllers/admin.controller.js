@@ -162,9 +162,10 @@ const getLoans = asyncHandler(async (req, res) => {
  * @param {import('express').Response} res
  */
 const getNewLoan = asyncHandler(async (req, res) => {
-  const { flashSucess, flashError } = req.session;
+  const { flashSucess, flashError, formData } = req.session;
   delete req.session.flashSucess;
   delete req.session.flashError;
+  delete req.session.formData;
 
   const { clients, collectors, routes } = await loanService.getNewLoanFormData(
     req.user.organizationId,
@@ -179,6 +180,8 @@ const getNewLoan = asyncHandler(async (req, res) => {
     routes,
     flashSucess,
     flashError,
+    // Restaurar valores del formulario previo si hay un error de validación
+    formData: formData || null,
   });
 });
 
@@ -204,8 +207,10 @@ const createLoan = asyncHandler(async (req, res) => {
   });
 
   if (!parsed.success) {
-    const errors = parsed.error.errors.map((e) => e.message).join(', ');
-    req.session.flashError = `Error de validación: ${errors}`;
+    const errors = parsed.error.errors.map((e) => `${e.path.join('.')}: ${e.message}`);
+    req.session.flashError = `Error de validación: ${errors.join(', ')}`;
+    // Reinyectar valores previos en sesión para restaurarlos en el formulario
+    req.session.formData = req.body;
     return res.redirect('/admin/loans/new');
   }
 

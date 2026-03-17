@@ -15,7 +15,7 @@
         <%= user.role === 'SUPER_ADMIN' ? 'bg-purple-100 text-purple-800' : 'bg-blue-100 text-blue-800' %>">
         <%= user.role.replace('_', ' ') %>
       </span>
-      <form action="/admin/logout?_method=DELETE" method="POST" class="inline">
+      <form action="/admin/logout" method="POST" class="inline">
         <button type="submit"
           class="text-gray-400 hover:text-white text-sm transition-colors"
           title="Cerrar sesión">

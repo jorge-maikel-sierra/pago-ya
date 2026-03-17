@@ -84,10 +84,13 @@ const updateCollectorSchema = z.object({
       .optional()
       .or(z.literal('')),
 
-    isActive: z
-      .union([z.boolean(), z.string()])
-      .transform((val) => val === true || val === 'true' || val === 'on')
-      .default(true),
+    isActive: z.preprocess(
+      (val) => (Array.isArray(val) ? val[val.length - 1] : val),
+      z
+        .union([z.boolean(), z.string()])
+        .transform((val) => val === true || val === 'true' || val === 'on')
+        .default(true),
+    ),
   }),
   params: z.object({
     id: z.string().uuid('El ID del cobrador debe ser un UUID válido'),

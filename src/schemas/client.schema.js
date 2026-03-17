@@ -8,6 +8,14 @@ const DOCUMENT_TYPES = Object.freeze(['CC', 'CE', 'TI', 'NIT', 'PP', 'PEP']);
  *
  * @type {z.ZodObject}
  */
+const isActiveField = z.preprocess(
+  (val) => (Array.isArray(val) ? val[val.length - 1] : val),
+  z.union([z.boolean(), z.string(), z.undefined()]).transform((val) => {
+    if (val === undefined) return undefined;
+    return val === true || val === 'true' || val === 'on';
+  }),
+);
+
 const createClientSchema = z.object({
   firstName: z
     .string({ required_error: 'El nombre es obligatorio' })
@@ -97,16 +105,7 @@ const createClientSchema = z.object({
 
   longitude: z.number().min(-180).max(180).optional(),
 
-  isActive: z.preprocess(
-    (val) => (Array.isArray(val) ? val[val.length - 1] : val),
-    z
-      .union([z.boolean(), z.string(), z.undefined()])
-      .optional()
-      .transform((val) => {
-        if (val === undefined) return true; // default para crear
-        return val === true || val === 'true' || val === 'on';
-      }),
-  ),
+  isActive: isActiveField.optional().transform((val) => (val === undefined ? true : val)),
 });
 
 /**
@@ -118,7 +117,9 @@ const createClientSchema = z.object({
  *
  * @type {z.ZodObject}
  */
-const updateClientSchema = createClientSchema.omit({ isActive: true }).partial();
+const updateClientSchema = createClientSchema
+  .extend({ isActive: isActiveField.optional() })
+  .partial();
 
 // Wrappers con envelope { body, params } para el middleware validate()
 const createClientMiddlewareSchema = z.object({ body: createClientSchema });
