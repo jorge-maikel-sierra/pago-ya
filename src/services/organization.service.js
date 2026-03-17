@@ -91,6 +91,98 @@ export const createOrganization = async (data) => {
 };
 
 /**
+ * Obtiene una organización por su ID para edición.
+ * Lanza un error 404 operacional si no existe.
+ *
+ * @param {string} id - UUID de la organización
+ * @returns {Promise<import('@prisma/client').Organization>}
+ */
+export const findOrganizationById = async (id) => {
+  const organization = await prisma.organization.findUnique({
+    where: { id },
+    select: {
+      id: true,
+      name: true,
+      nit: true,
+      phone: true,
+      email: true,
+      address: true,
+      logoUrl: true,
+      planType: true,
+      subscriptionEnds: true,
+      moraGraceDays: true,
+      moraMultiplier: true,
+      isActive: true,
+    },
+  });
+
+  if (!organization) {
+    const err = new Error('Organización no encontrada');
+    err.statusCode = 404;
+    err.isOperational = true;
+    throw err;
+  }
+
+  return organization;
+};
+
+/**
+ * Actualiza los datos de una organización existente.
+ * Lanza un error 404 si la organización no existe y 409 si el nit/email ya están en uso.
+ *
+ * @param {string} id - UUID de la organización
+ * @param {object} data - Campos a actualizar (mismos que createOrganization)
+ * @returns {Promise<import('@prisma/client').Organization>}
+ */
+export const updateOrganization = async (id, data) => {
+  // Verificar existencia antes de actualizar para retornar 404 claro
+  await prisma.organization.findUniqueOrThrow({ where: { id } });
+
+  const {
+    name,
+    nit,
+    phone,
+    email,
+    address,
+    logoUrl,
+    planType,
+    subscriptionEnds,
+    moraGraceDays,
+    moraMultiplier,
+    isActive,
+  } = data;
+
+  try {
+    return await prisma.organization.update({
+      where: { id },
+      data: {
+        name,
+        nit: nit || null,
+        phone: phone || null,
+        email: email || null,
+        address: address || null,
+        logoUrl: logoUrl || null,
+        planType: planType || 'BASIC',
+        subscriptionEnds: subscriptionEnds ? new Date(subscriptionEnds) : null,
+        moraGraceDays: moraGraceDays ?? 0,
+        moraMultiplier: moraMultiplier ?? 1.5,
+        isActive: isActive ?? true,
+      },
+    });
+  } catch (error) {
+    // nit y email tienen constraint única en la tabla organizations (ver schema.prisma @unique)
+    if (error.code === 'P2002') {
+      const field = error.meta?.target?.[0] || 'campo';
+      const err = new Error(`El ${field} ya está registrado en otra organización`);
+      err.statusCode = 409;
+      err.isOperational = true;
+      throw err;
+    }
+    throw error;
+  }
+};
+
+/**
  * Lista los usuarios de una organización con búsqueda opcional.
  *
  * @param {string} organizationId - UUID de la organización

@@ -12,6 +12,7 @@ import * as reportService from '../services/report.service.js';
 import * as paymentService from '../services/payment.service.js';
 import { enqueuePaymentReceipt } from '../services/notification.service.js';
 import { createLoanSchema } from '../schemas/loan.schema.js';
+import { updateOrganizationSchema } from '../schemas/organization.schema.js';
 
 // ============================================
 // AUTH
@@ -1144,6 +1145,54 @@ const createOrganization = asyncHandler(async (req, res) => {
   }
 });
 
+/**
+ * GET /admin/organizations/:id/edit
+ * Renderiza el formulario de edición de una organización (solo SUPER_ADMIN).
+ *
+ * @param {import('express').Request} req
+ * @param {import('express').Response} res
+ */
+const getEditOrganization = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const { flashError } = req.session;
+  delete req.session.flashError;
+
+  // findOrganizationById lanza 404 si la organización no existe — no se necesita verificación manual
+  const organization = await organizationService.findOrganizationById(id);
+
+  return res.render('pages/organizations/edit', {
+    title: 'Editar Organización',
+    user: req.user,
+    currentPath: '/admin/organizations',
+    organization,
+    flashError,
+  });
+});
+
+/**
+ * PUT /admin/organizations/:id
+ * Actualiza los datos de una organización existente (solo SUPER_ADMIN).
+ *
+ * @param {import('express').Request} req
+ * @param {import('express').Response} res
+ */
+const updateOrganization = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const data = updateOrganizationSchema.parse(req);
+
+  try {
+    await organizationService.updateOrganization(id, data.body);
+    req.session.flashSucess = 'Organización actualizada correctamente';
+    return res.redirect('/admin/organizations');
+  } catch (error) {
+    if (error.isOperational) {
+      req.session.flashError = error.message;
+      return req.session.save(() => res.redirect(`/admin/organizations/${id}/edit`));
+    }
+    throw error;
+  }
+});
+
 export {
   getLogin,
   postLogin,
@@ -1189,4 +1238,6 @@ export {
   getOrganizations,
   getNewOrganization,
   createOrganization,
+  getEditOrganization,
+  updateOrganization,
 };
