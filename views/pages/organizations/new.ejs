@@ -19,20 +19,20 @@ const PLAN_OPTIONS = [
 %>
 <%- include('../../layouts/header') %>
 
-<div class="p-4 sm:p-6 lg:p-8 space-y-6 bg-brand-navy min-h-screen">
+<div class="p-4 sm:p-6 lg:p-8 space-y-6">
 
   <!-- =========================================
        ENCABEZADO
   ========================================= -->
   <div class="page-header">
     <a href="/admin/organizations"
-       class="inline-flex items-center justify-center w-10 h-10 rounded-lg border border-gray-700
-              text-gray-400 hover:bg-brand-navy transition-colors">
+       class="inline-flex items-center justify-center w-10 h-10 rounded-lg border border-gray-200
+              text-gray-500 hover:bg-gray-50 transition-colors">
       ←
     </a>
     <div>
-      <h1 class="text-2xl font-display font-bold text-white">Registrar Nueva Organización</h1>
-      <p class="text-sm text-gray-400 mt-1 font-body">Crea un nuevo tenant en el sistema</p>
+      <h1 class="text-2xl font-bold text-brand-navy">Registrar Nueva Organización</h1>
+      <p class="text-sm text-gray-500 mt-1">Crea un nuevo tenant en el sistema</p>
     </div>
   </div>
 
@@ -40,10 +40,10 @@ const PLAN_OPTIONS = [
        MENSAJE DE ERROR
   ========================================= -->
   <% if (typeof flashError !== 'undefined' && flashError) { %>
-    <div class="rounded-lg bg-red-900/50 border border-red-600 p-4" role="alert">
+    <div class="rounded-lg bg-red-50 border border-red-200 p-4" role="alert">
       <div class="flex items-center gap-2">
-        <span class="text-red-400 text-lg">❌</span>
-        <p class="text-sm font-medium text-red-300 font-body"><%= flashError %></p>
+        <span class="text-red-500 text-lg">❌</span>
+        <p class="text-sm font-medium text-red-800"><%= flashError %></p>
       </div>
     </div>
   <% } %>
@@ -52,198 +52,136 @@ const PLAN_OPTIONS = [
        FORMULARIO
   ========================================= -->
   <form method="POST" action="/admin/organizations"
-        class="form-card-dark max-w-3xl">
+        class="form-card">
 
-    <!-- Sección: Información Básica -->
-    <div class="form-section">
-      <h2 class="form-section-title-dark">📋 Información Básica</h2>
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
-
-        <!-- Nombre -->
-        <div class="form-group md:col-span-2">
-          <label for="name" class="form-label-dark">
-            Nombre de la Organización <span class="text-red-400">*</span>
-          </label>
-          <input
-            type="text"
-            id="name"
-            name="name"
-            required
-            minlength="3"
-            maxlength="150"
-            placeholder="Ej: Créditos El Sol S.A.S."
-            class="form-input-dark font-body"
-          />
-        </div>
-
-        <!-- NIT -->
-        <div class="form-group">
-          <label for="nit" class="form-label-dark">NIT</label>
-          <input
-            type="text"
-            id="nit"
-            name="nit"
-            maxlength="20"
-            placeholder="Ej: 900123456-1"
-            class="form-input-dark font-body"
-          />
-        </div>
-
-        <!-- Teléfono -->
-        <div class="form-group">
-          <label for="phone" class="form-label-dark">Teléfono</label>
-          <input
-            type="tel"
-            id="phone"
-            name="phone"
-            maxlength="20"
-            placeholder="Ej: +57 300 123 4567"
-            class="form-input-dark font-body"
-          />
-        </div>
-
-        <!-- Email -->
-        <div class="form-group">
-          <label for="email" class="form-label-dark">Email</label>
-          <input
-            type="email"
-            id="email"
-            name="email"
-            maxlength="100"
-            placeholder="Ej: admin@empresa.com"
-            class="form-input-dark font-body"
-          />
-        </div>
-
-        <!-- Dirección -->
-        <div class="form-group">
-          <label for="address" class="form-label-dark">Dirección</label>
-          <input
-            type="text"
-            id="address"
-            name="address"
-            maxlength="255"
-            placeholder="Ej: Cra 10 #45-67, Bogotá"
-            class="form-input-dark font-body"
-          />
-        </div>
-
-        <!-- URL del Logo -->
-        <div class="form-group md:col-span-2">
-          <label for="logoUrl" class="form-label-dark">URL del Logo</label>
-          <input
-            type="url"
-            id="logoUrl"
-            name="logoUrl"
-            maxlength="500"
-            placeholder="https://ejemplo.com/logo.png"
-            class="form-input-dark font-body"
-          />
-          <p class="form-hint-dark font-body">Opcional. URL pública de la imagen del logo.</p>
-        </div>
-
-      </div>
+    <!-- ── Información Básica ──────────────────────────────────────── -->
+    <div class="px-6 py-4 border-b border-gray-100">
+      <h2 class="form-section-title">📋 Información Básica</h2>
     </div>
+    <div class="p-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-5">
 
-    <!-- Sección: Plan y Suscripción -->
-    <div class="form-section">
-      <h2 class="form-section-title-dark">💳 Plan y Suscripción</h2>
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
-
-        <!-- Tipo de Plan -->
-        <div class="form-group">
-          <label for="planType" class="form-label-dark">Tipo de Plan</label>
-          <select id="planType" name="planType" class="form-select-dark font-body">
-            <% PLAN_OPTIONS.forEach(function(plan) { %>
-              <option value="<%= plan.value %>" <%= plan.value === 'BASIC' ? 'selected' : '' %>>
-                <%= plan.label %> - <%= plan.description %>
-              </option>
-            <% }); %>
-          </select>
-        </div>
-
-        <!-- Fecha de Vencimiento -->
-        <div class="form-group">
-          <label for="subscriptionEnds" class="form-label-dark">
-            Vencimiento de Suscripción
-          </label>
-          <input
-            type="date"
-            id="subscriptionEnds"
-            name="subscriptionEnds"
-            class="form-input-dark font-body"
-          />
-          <p class="form-hint-dark font-body">Dejar vacío para suscripción sin límite.</p>
-        </div>
-
-      </div>
-    </div>
-
-    <!-- Sección: Configuración de Mora -->
-    <div class="form-section">
-      <h2 class="form-section-title-dark">⚠️ Configuración de Mora</h2>
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
-
-        <!-- Días de Gracia -->
-        <div class="form-group">
-          <label for="moraGraceDays" class="form-label-dark">Días de Gracia</label>
-          <input
-            type="number"
-            id="moraGraceDays"
-            name="moraGraceDays"
-            value="3"
-            min="0"
-            max="30"
-            class="form-input-dark font-body tabular-nums"
-          />
-          <p class="form-hint-dark font-body">Días antes de aplicar mora (0-30).</p>
-        </div>
-
-        <!-- Multiplicador de Mora -->
-        <div class="form-group">
-          <label for="moraMultiplier" class="form-label-dark">Multiplicador de Mora</label>
-          <input
-            type="number"
-            id="moraMultiplier"
-            name="moraMultiplier"
-            value="1.5"
-            min="1"
-            max="5"
-            step="0.1"
-            class="form-input-dark font-body tabular-nums"
-          />
-          <p class="form-hint-dark font-body">Factor que multiplica la cuota vencida (1-5x).</p>
-        </div>
-
-      </div>
-    </div>
-
-    <!-- Sección: Estado -->
-    <div class="form-section">
-      <h2 class="form-section-title-dark">🔄 Estado</h2>
-      <div class="flex items-center gap-3">
-        <input
-          type="checkbox"
-          id="isActive"
-          name="isActive"
-          checked
-          class="w-5 h-5 rounded border-gray-700 bg-brand-navy text-brand-green
-                 accent-brand-green focus:ring-brand-green focus:ring-offset-brand-navy"
-        />
-        <label for="isActive" class="text-sm text-gray-300 font-body">
-          Organización activa (puede operar en el sistema)
+      <!-- Nombre — ocupa toda la fila por su longitud -->
+      <div class="sm:col-span-2 lg:col-span-3">
+        <label for="name" class="form-label">
+          Nombre de la Organización <span class="text-red-500">*</span>
         </label>
+        <input
+          type="text"
+          id="name"
+          name="name"
+          required
+          minlength="3"
+          maxlength="150"
+          placeholder="Ej: Créditos El Sol S.A.S."
+          class="form-input"
+        />
       </div>
+
+      <!-- NIT -->
+      <div>
+        <label for="nit" class="form-label">NIT</label>
+        <input type="text" id="nit" name="nit" maxlength="20"
+               placeholder="Ej: 900123456-1" class="form-input" />
+      </div>
+
+      <!-- Teléfono -->
+      <div>
+        <label for="phone" class="form-label">Teléfono</label>
+        <input type="tel" id="phone" name="phone" maxlength="20"
+               placeholder="Ej: +57 300 123 4567" class="form-input" />
+      </div>
+
+      <!-- Email -->
+      <div>
+        <label for="email" class="form-label">Email</label>
+        <input type="email" id="email" name="email" maxlength="100"
+               placeholder="Ej: admin@empresa.com" class="form-input" />
+      </div>
+
+      <!-- Dirección — ocupa 2 columnas para dar más espacio -->
+      <div class="sm:col-span-2">
+        <label for="address" class="form-label">Dirección</label>
+        <input type="text" id="address" name="address" maxlength="255"
+               placeholder="Ej: Cra 10 #45-67, Bogotá" class="form-input" />
+      </div>
+
+      <!-- URL del Logo — ocupa 1 columna restante -->
+      <div>
+        <label for="logoUrl" class="form-label">URL del Logo</label>
+        <input type="url" id="logoUrl" name="logoUrl" maxlength="500"
+               placeholder="https://ejemplo.com/logo.png" class="form-input" />
+        <p class="form-hint">URL pública de la imagen (opcional).</p>
+      </div>
+
+    </div>
+
+    <!-- ── Plan, Mora y Estado ─────────────────────────────────────── -->
+    <div class="px-6 py-4 border-t border-b border-gray-100">
+      <h2 class="form-section-title">💳 Plan, Mora y Estado</h2>
+    </div>
+    <div class="p-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-x-6 gap-y-5">
+
+      <!-- Tipo de Plan -->
+      <div>
+        <label for="planType" class="form-label">Tipo de Plan</label>
+        <select id="planType" name="planType" class="form-select">
+          <% PLAN_OPTIONS.forEach(function(plan) { %>
+            <option value="<%= plan.value %>" <%= plan.value === 'BASIC' ? 'selected' : '' %>>
+              <%= plan.label %> — <%= plan.description %>
+            </option>
+          <% }); %>
+        </select>
+      </div>
+
+      <!-- Vencimiento Suscripción -->
+      <div>
+        <label for="subscriptionEnds" class="form-label">Vencimiento Suscripción</label>
+        <input type="date" id="subscriptionEnds" name="subscriptionEnds" class="form-input" />
+        <p class="form-hint">Vacío = sin límite.</p>
+      </div>
+
+      <!-- Días de Gracia -->
+      <div>
+        <label for="moraGraceDays" class="form-label">Días de Gracia</label>
+        <input type="number" id="moraGraceDays" name="moraGraceDays"
+               value="3" min="0" max="30" class="form-input tabular-nums" />
+        <p class="form-hint">Días antes de aplicar mora (0-30).</p>
+      </div>
+
+      <!-- Multiplicador de Mora -->
+      <div>
+        <label for="moraMultiplier" class="form-label">Multiplicador Mora</label>
+        <input type="number" id="moraMultiplier" name="moraMultiplier"
+               value="1.5" min="1" max="5" step="0.1" class="form-input tabular-nums" />
+        <p class="form-hint">Factor sobre la cuota vencida (1-5x).</p>
+      </div>
+
+      <!-- Estado activo -->
+      <div class="flex flex-col justify-center">
+        <label class="form-label">Estado</label>
+        <div class="flex items-center gap-2 mt-1">
+          <input
+            type="checkbox"
+            id="isActive"
+            name="isActive"
+            checked
+            class="w-5 h-5 rounded border-gray-300 text-brand-green accent-brand-green
+                   focus:ring-brand-green"
+          />
+          <label for="isActive" class="text-sm text-gray-600">Activa</label>
+        </div>
+      </div>
+
     </div>
 
     <!-- =========================================
          BOTONES DE ACCIÓN
     ========================================= -->
-    <div class="flex flex-col sm:flex-row gap-3 pt-6 border-t border-gray-700">
-      <button type="submit" class="flex-1 btn-primary justify-center font-body">
+    <div class="flex flex-col sm:flex-row gap-3 px-6 py-4 border-t border-gray-100">
+      <button type="submit" class="flex-1 btn-primary justify-center">
         ✅ Registrar Organización
       </button>
-      <a href="/admin/organizations" class="flex-1 btn-secondary-dark justify-center font-body">
+      <a href="/admin/organizations" class="flex-1 btn-secondary justify-center">
         Cancelar
       </a>
     </div>

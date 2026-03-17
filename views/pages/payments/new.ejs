@@ -68,9 +68,9 @@ function todayISO() {
        FORMULARIO DE PAGO
   ========================================= -->
   <form method="POST" action="/admin/payments"
-        class="form-card space-y-6 max-w-2xl">
+        class="form-card space-y-6">
 
-    <!-- Préstamo / Cliente -->
+    <!-- Préstamo / Cliente — ocupa toda la fila por el texto largo del select -->
     <div class="form-group">
       <label for="loanId" class="form-label">
         Préstamo / Cliente <span class="text-red-500">*</span>
@@ -92,70 +92,75 @@ function todayISO() {
       <p class="form-hint">Solo se muestran préstamos con estado ACTIVO</p>
     </div>
 
-    <!-- Monto a pagar -->
-    <div class="form-group">
-      <label for="amountPaid" class="form-label">
-        Monto Recibido <span class="text-red-500">*</span>
-      </label>
-      <div class="relative">
-        <span class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-sm">$</span>
+    <!-- Fila: Monto · Fecha · Cobrador · Método -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-6 gap-y-5">
+
+      <!-- Monto a pagar -->
+      <div class="form-group">
+        <label for="amountPaid" class="form-label">
+          Monto Recibido <span class="text-red-500">*</span>
+        </label>
+        <div class="relative">
+          <span class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-sm">$</span>
+          <input
+            type="number"
+            id="amountPaid"
+            name="amountPaid"
+            required
+            min="1"
+            step="0.01"
+            placeholder="0.00"
+            class="form-input pl-8 tabular-nums"
+          />
+        </div>
+        <p class="form-hint">Valor exacto recibido del cliente</p>
+      </div>
+
+      <!-- Fecha del pago -->
+      <div class="form-group">
+        <label for="paymentDate" class="form-label">
+          Fecha del Pago <span class="text-red-500">*</span>
+        </label>
         <input
-          type="number"
-          id="amountPaid"
-          name="amountPaid"
+          type="date"
+          id="paymentDate"
+          name="paymentDate"
           required
-          min="1"
-          step="0.01"
-          placeholder="0.00"
-          class="form-input pl-8 tabular-nums"
+          value="<%= todayISO() %>"
+          class="form-input"
         />
       </div>
-      <p class="form-hint">Ingresa el valor exacto recibido del cliente</p>
+
+      <!-- Cobrador -->
+      <div class="form-group">
+        <label for="collectorId" class="form-label">
+          Cobrador <span class="text-red-500">*</span>
+        </label>
+        <select id="collectorId" name="collectorId" required class="form-select">
+          <option value="">— Selecciona un cobrador —</option>
+          <% collectors.forEach(function(collector) { %>
+            <option value="<%= collector.id %>"
+              <%= collector.id === user.id ? 'selected' : '' %>>
+              <%= collector.firstName %> <%= collector.lastName %>
+            </option>
+          <% }); %>
+        </select>
+      </div>
+
+      <!-- Método de pago -->
+      <div class="form-group">
+        <label for="paymentMethod" class="form-label">Método de Pago</label>
+        <select id="paymentMethod" name="paymentMethod" class="form-select">
+          <option value="CASH" selected>Efectivo</option>
+          <option value="TRANSFER">Transferencia</option>
+          <option value="NEQUI">Nequi</option>
+          <option value="DAVIPLATA">Daviplata</option>
+        </select>
+      </div>
+
     </div>
 
-    <!-- Fecha del pago -->
-    <div class="form-group">
-      <label for="paymentDate" class="form-label">
-        Fecha del Pago <span class="text-red-500">*</span>
-      </label>
-      <input
-        type="date"
-        id="paymentDate"
-        name="paymentDate"
-        required
-        value="<%= todayISO() %>"
-        class="form-input"
-      />
-    </div>
-
-    <!-- Cobrador -->
-    <div class="form-group">
-      <label for="collectorId" class="form-label">
-        Cobrador <span class="text-red-500">*</span>
-      </label>
-      <select id="collectorId" name="collectorId" required class="form-select">
-        <option value="">— Selecciona un cobrador —</option>
-        <% collectors.forEach(function(collector) { %>
-          <option value="<%= collector.id %>"
-            <%= collector.id === user.id ? 'selected' : '' %>>
-            <%= collector.firstName %> <%= collector.lastName %>
-          </option>
-        <% }); %>
-      </select>
-    </div>
-
-    <!-- Método de pago -->
-    <div class="form-group">
-      <label for="paymentMethod" class="form-label">Método de Pago</label>
-      <select id="paymentMethod" name="paymentMethod" class="form-select">
-        <option value="CASH" selected>Efectivo</option>
-        <option value="TRANSFER">Transferencia</option>
-        <option value="NEQUI">Nequi</option>
-        <option value="DAVIPLATA">Daviplata</option>
-      </select>
-    </div>
-
-    <!-- Notas -->
+    <!-- Notas — ocupa toda la fila -->
     <div class="form-group">
       <label for="notes" class="form-label">Notas (opcional)</label>
       <textarea
