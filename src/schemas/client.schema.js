@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-const DOCUMENT_TYPES = Object.freeze(['CC', 'CE', 'TI', 'NIT', 'PP', 'PEP']);
+const DOCUMENT_TYPES = Object.freeze(['CC', 'NIT', 'PEP']);
 
 /**
  * Schema de validación para los campos de un cliente.

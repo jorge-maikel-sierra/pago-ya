@@ -3,10 +3,7 @@ import prisma from '../config/prisma.js';
 /** Opciones de tipo de documento disponibles en el sistema */
 export const DOCUMENT_OPTIONS = [
   { value: 'CC', label: 'Cédula de Ciudadanía' },
-  { value: 'CE', label: 'Cédula de Extranjería' },
-  { value: 'TI', label: 'Tarjeta de Identidad' },
   { value: 'NIT', label: 'NIT' },
-  { value: 'PP', label: 'Pasaporte' },
   { value: 'PEP', label: 'PEP' },
 ];
 

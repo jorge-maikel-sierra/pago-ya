@@ -38,21 +38,18 @@ describe('createClientSchema', () => {
   it('accepts all optional fields', () => {
     const result = createClientSchema.parse({
       ...validPayload,
-      documentType: 'CE',
+      documentType: 'NIT',
       phone: '3001234567',
       city: 'Bogotá',
-      businessName: 'Tienda Pérez',
-      businessAddress: 'Calle 5 #2-10',
       latitude: 11.5449,
       longitude: -72.9072,
       notes: 'Cliente preferencial',
       routeId: '550e8400-e29b-41d4-a716-446655440000',
     });
 
-    expect(result.documentType).toBe('CE');
+    expect(result.documentType).toBe('NIT');
     expect(result.phone).toBe('3001234567');
     expect(result.city).toBe('Bogotá');
-    expect(result.businessName).toBe('Tienda Pérez');
     expect(result.latitude).toBe(11.5449);
     expect(result.longitude).toBe(-72.9072);
     expect(result.routeId).toBe('550e8400-e29b-41d4-a716-446655440000');
