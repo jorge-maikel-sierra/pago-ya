@@ -162,10 +162,11 @@ const getLoans = asyncHandler(async (req, res) => {
  * @param {import('express').Response} res
  */
 const getNewLoan = asyncHandler(async (req, res) => {
-  const { flashSucess, flashError, formData } = req.session;
+  const { flashSucess, flashError, formData, validationErrors } = req.session;
   delete req.session.flashSucess;
   delete req.session.flashError;
   delete req.session.formData;
+  delete req.session.validationErrors;
 
   const { clients, collectors, routes } = await loanService.getNewLoanFormData(
     req.user.organizationId,
@@ -182,6 +183,8 @@ const getNewLoan = asyncHandler(async (req, res) => {
     flashError,
     // Restaurar valores del formulario previo si hay un error de validación
     formData: formData || null,
+    // Pasar errores estructurados (si existen) para la vista EJS
+    validationErrors: validationErrors || null,
   });
 });
 
@@ -207,8 +210,14 @@ const createLoan = asyncHandler(async (req, res) => {
   });
 
   if (!parsed.success) {
-    const errors = parsed.error.errors.map((e) => `${e.path.join('.')}: ${e.message}`);
-    req.session.flashError = `Error de validación: ${errors.join(', ')}`;
+    // Crear array estructurado de errores { field, message } para la vista
+    const errors = parsed.error.errors.map((e) => ({
+      field: e.path.join('.'),
+      message: e.message,
+    }));
+    req.session.validationErrors = errors;
+    // Guardar también un mensaje breve para flashError (compatibilidad)
+    req.session.flashError = `Error de validación: ${errors.map((e) => `${e.field}: ${e.message}`).join(', ')}`;
     // Reinyectar valores previos en sesión para restaurarlos en el formulario
     req.session.formData = req.body;
     return res.redirect('/admin/loans/new');
