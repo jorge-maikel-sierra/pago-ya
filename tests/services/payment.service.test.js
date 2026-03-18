@@ -22,7 +22,7 @@ jest.unstable_mockModule('../../src/config/prisma.js', () => ({
   },
 }));
 
-const { processPayment, registerPayment, batchSync } = await import(
+const { processPayment, registerPayment, batchSync, registerAdminPayment } = await import(
   '../../src/services/payment.service.js'
 );
 
@@ -432,5 +432,137 @@ describe('batchSync', () => {
   it('retorna array vacío si se pasa array vacío', async () => {
     const results = await batchSync([], COLLECTOR_ID);
     expect(results).toEqual([]);
+  });
+});
+
+// ============================
+// registerAdminPayment
+// ============================
+describe('registerAdminPayment', () => {
+  const adminInput = {
+    loanId: LOAN_ID,
+    amountPaid: '25000',
+    paymentDate: '2026-05-01',
+    collectorId: COLLECTOR_ID,
+    paymentMethod: 'CASH',
+    notes: 'Pago en efectivo',
+  };
+
+  const makeTx = (overrides = {}) => ({
+    loan: {
+      findUnique: jest.fn().mockResolvedValue({
+        ...baseLoan,
+        moraAmount: '0.00',
+        paymentSchedule: [
+          { id: SCHEDULE_ID, amountDue: '25000.00', amountPaid: '0.00', installmentNumber: 1 },
+        ],
+        collector: { firstName: 'Col', lastName: 'Lector' },
+        ...overrides.loan,
+      }),
+      update: jest.fn().mockResolvedValue({ ...baseLoan, totalPaid: '25000.00' }),
+    },
+    paymentSchedule: {
+      update: jest.fn().mockResolvedValue(baseSchedule),
+    },
+    payment: {
+      create: jest.fn().mockResolvedValue({ id: PAYMENT_ID }),
+    },
+    ...overrides,
+  });
+
+  beforeEach(() => jest.clearAllMocks());
+
+  it('registra pago admin correctamente sin mora', async () => {
+    const tx = makeTx();
+    mockTransaction.mockImplementation(async (fn) => fn(tx));
+
+    const result = await registerAdminPayment(adminInput);
+
+    expect(mockTransaction).toHaveBeenCalledTimes(1);
+    expect(tx.payment.create).toHaveBeenCalledTimes(1);
+    expect(result.payment.id).toBe(PAYMENT_ID);
+  });
+
+  it('lanza error 404 cuando el préstamo no existe', async () => {
+    const tx = {
+      loan: { findUnique: jest.fn().mockResolvedValue(null) },
+      paymentSchedule: { update: jest.fn() },
+      payment: { create: jest.fn() },
+    };
+    mockTransaction.mockImplementation(async (fn) => fn(tx));
+
+    await expect(registerAdminPayment(adminInput)).rejects.toMatchObject({ statusCode: 404 });
+  });
+
+  it('lanza error 409 cuando el préstamo no está activo', async () => {
+    const tx = makeTx();
+    tx.loan.findUnique.mockResolvedValue({
+      ...baseLoan,
+      status: 'COMPLETED',
+      moraAmount: '0.00',
+      paymentSchedule: [],
+      collector: { firstName: 'C', lastName: 'L' },
+    });
+    mockTransaction.mockImplementation(async (fn) => fn(tx));
+
+    await expect(registerAdminPayment(adminInput)).rejects.toMatchObject({ statusCode: 409 });
+  });
+
+  it('distribuye el pago a mora primero cuando hay mora pendiente', async () => {
+    const tx = makeTx();
+    tx.loan.findUnique.mockResolvedValue({
+      ...baseLoan,
+      moraAmount: '10000.00',
+      paymentSchedule: [
+        { id: SCHEDULE_ID, amountDue: '25000.00', amountPaid: '0.00', installmentNumber: 1 },
+      ],
+      collector: { firstName: 'C', lastName: 'L' },
+    });
+    mockTransaction.mockImplementation(async (fn) => fn(tx));
+
+    await registerAdminPayment({ ...adminInput, amountPaid: '35000' });
+
+    const createCall = tx.payment.create.mock.calls[0][0];
+    // moraPayment should be 10000 (full mora), capitalPayment 25000
+    expect(createCall.data.moraAmount).toBe('10000.00');
+    expect(createCall.data.amount).toBe('25000.00');
+  });
+
+  it('acepta paymentDate en formato ISO string', async () => {
+    const tx = makeTx();
+    mockTransaction.mockImplementation(async (fn) => fn(tx));
+
+    await registerAdminPayment({ ...adminInput, paymentDate: '2026-05-01T10:00:00Z' });
+
+    expect(tx.payment.create).toHaveBeenCalledTimes(1);
+  });
+
+  it('acepta paymentDate vacío y usa la fecha actual', async () => {
+    const tx = makeTx();
+    mockTransaction.mockImplementation(async (fn) => fn(tx));
+
+    await registerAdminPayment({ ...adminInput, paymentDate: null });
+
+    expect(tx.payment.create).toHaveBeenCalledTimes(1);
+  });
+
+  it('marca préstamo como COMPLETED cuando saldo queda en cero', async () => {
+    const tx = makeTx();
+    tx.loan.findUnique.mockResolvedValue({
+      ...baseLoan,
+      outstandingBalance: '25000.00',
+      totalPaid: '475000.00',
+      moraAmount: '0.00',
+      paymentSchedule: [
+        { id: SCHEDULE_ID, amountDue: '25000.00', amountPaid: '0.00', installmentNumber: 1 },
+      ],
+      collector: { firstName: 'C', lastName: 'L' },
+    });
+    mockTransaction.mockImplementation(async (fn) => fn(tx));
+
+    await registerAdminPayment(adminInput);
+
+    const loanUpdate = tx.loan.update.mock.calls[0][0];
+    expect(loanUpdate.data.status).toBe('COMPLETED');
   });
 });
