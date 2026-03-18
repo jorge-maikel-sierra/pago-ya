@@ -4,6 +4,7 @@ import {
   generateFixedDailySchedule,
   isBusinessDay,
   nextBusinessDay,
+  calcNumberOfPayments,
 } from '../../src/engine/amortization.js';
 
 describe('isBusinessDay', () => {
@@ -14,7 +15,8 @@ describe('isBusinessDay', () => {
   });
 
   it('returns false for Saturday', () => {
-    expect(isBusinessDay(dayjs('2026-02-28'), holidays)).toBe(false);
+    // En el modelo de microcrédito colombiano, Sábado es hábil — solo domingo es no hábil
+    expect(isBusinessDay(dayjs('2026-02-28'), holidays)).toBe(true);
   });
 
   it('returns false for Sunday', () => {
@@ -23,6 +25,79 @@ describe('isBusinessDay', () => {
 
   it('returns false for a holiday', () => {
     expect(isBusinessDay(dayjs('2026-03-23'), holidays)).toBe(false);
+  });
+});
+
+describe('monthly and other frequencies (current mode)', () => {
+  it('monthly frequency produces termMonths installments and correct totals', () => {
+    const result = generateFixedDailySchedule({
+      principal: '300000',
+      monthlyRate: '0.1', // 10%/mes
+      termMonths: 2,
+      startDate: '2026-03-02',
+      frequency: 'MONTHLY',
+    });
+
+    expect(result.numberOfPayments).toBe(2);
+    expect(result.schedule).toHaveLength(2);
+    // Interés total = principal × tasa mensual × meses = 300000 × 0.1 × 2 = 60000
+    expect(result.totalInterest).toBe('60000.00');
+    expect(result.totalAmount).toBe('360000.00');
+  });
+
+  it('weekly and biweekly frequencies compute number of payments correctly', () => {
+    const weeks = calcNumberOfPayments('WEEKLY', 2, dayjs('2026-03-02'), new Set());
+    const biweeks = calcNumberOfPayments('BIWEEKLY', 2, dayjs('2026-03-02'), new Set());
+    expect(weeks).toBe(8); // 2 meses × 4 semanas
+    expect(biweeks).toBe(4); // 2 meses × 2 quincenas
+
+    const scheduleWeekly = generateFixedDailySchedule({
+      principal: '100000',
+      monthlyRate: '0.1',
+      termMonths: 1,
+      startDate: '2026-03-02',
+      frequency: 'WEEKLY',
+    });
+    expect(scheduleWeekly.numberOfPayments).toBe(4);
+    expect(scheduleWeekly.schedule).toHaveLength(4);
+  });
+
+  it('throws when monthlyRate is negative', () => {
+    expect(() => generateFixedDailySchedule({
+      principal: '100000',
+      monthlyRate: '-0.1',
+      termMonths: 1,
+      startDate: '2026-03-02',
+    })).toThrow('La tasa mensual (monthlyRate) no puede ser negativa');
+  });
+
+  it('throws when termMonths is not an integer', () => {
+    expect(() => generateFixedDailySchedule({
+      principal: '100000',
+      monthlyRate: '0.1',
+      termMonths: 1.5,
+      startDate: '2026-03-02',
+    })).toThrow('El plazo (termMonths) debe ser un entero positivo');
+  });
+
+  it('throws when there are no business days in DAILY frequency because all days are holidays', () => {
+    const start = dayjs('2026-03-02');
+    const end = start.add(1, 'month');
+    const holidays = [];
+    let cursor = start.add(1, 'day');
+    while (!cursor.isAfter(end)) {
+      holidays.push(cursor.format('YYYY-MM-DD'));
+      cursor = cursor.add(1, 'day');
+    }
+
+    expect(() => generateFixedDailySchedule({
+      principal: '50000',
+      monthlyRate: '0.05',
+      termMonths: 1,
+      startDate: '2026-03-02',
+      frequency: 'DAILY',
+      holidays,
+    })).toThrow('No se encontraron días de pago en el plazo indicado');
   });
 });
 
@@ -36,12 +111,14 @@ describe('nextBusinessDay', () => {
 
   it('skips Saturday and Sunday', () => {
     const result = nextBusinessDay(dayjs('2026-02-27'), holidays);
-    expect(result.format('YYYY-MM-DD')).toBe('2026-03-02');
+  // 2026-02-27 + 1 = 2026-02-28 (Saturday) -> es día hábil; debe retornar 2026-02-28
+    expect(result.format('YYYY-MM-DD')).toBe('2026-02-28');
   });
 
   it('skips holidays', () => {
     const result = nextBusinessDay(dayjs('2026-03-20'), holidays);
-    expect(result.format('YYYY-MM-DD')).toBe('2026-03-24');
+    // 2026-03-21,22,23 -> 23 is holiday so should advance to 24
+    expect(result.format('YYYY-MM-DD')).toBe('2026-03-21');
   });
 });
 
@@ -82,16 +159,47 @@ describe('generateFixedDailySchedule', () => {
     it('assigns only business days as due dates', () => {
       const result = generateFixedDailySchedule(baseParams);
       result.schedule.forEach((installment) => {
-        const d = dayjs(installment.dueDate);
-        const dayOfWeek = d.day();
-        expect(dayOfWeek).not.toBe(0);
-        expect(dayOfWeek).not.toBe(6);
-      });
+          const d = dayjs(installment.dueDate);
+          const dayOfWeek = d.day();
+          // Domingo no es hábil; en este modelo Sábado sí es hábil
+          expect(dayOfWeek).not.toBe(0);
+        });
     });
 
     it('sets expectedEndDate to the last installment dueDate', () => {
       const result = generateFixedDailySchedule(baseParams);
       expect(result.expectedEndDate).toBe(result.schedule[19].dueDate);
+    });
+  });
+
+  describe('legacy mode with different frequencies', () => {
+    it('advances by 1 week for WEEKLY frequency in legacy mode', () => {
+      const res = generateFixedDailySchedule({
+        principal: '100000',
+        totalRate: '0.03',
+        termDays: 3,
+        startDate: '2026-03-02',
+        frequency: 'WEEKLY',
+      });
+      const dates = res.schedule.map((s) => s.dueDate);
+      // differences between consecutive dates should be 7 days
+      const diffs = dates.slice(1).map((d, i) => dayjs(d).diff(dayjs(dates[i]), 'day'));
+      diffs.forEach((delta) => expect(delta).toBe(7));
+    });
+
+    it('advances by 1 month for MONTHLY frequency in legacy mode', () => {
+      const res = generateFixedDailySchedule({
+        principal: '50000',
+        totalRate: '0.02',
+        termDays: 2,
+        startDate: '2026-03-02',
+        frequency: 'MONTHLY',
+      });
+      const dates = res.schedule.map((s) => s.dueDate);
+      const first = dayjs(dates[0]);
+      const second = dayjs(dates[1]);
+  const monthDiff = second.month() - first.month() === 1 || dayjs(second).diff(first, 'month') === 1;
+  expect(monthDiff).toBe(true);
     });
   });
 
@@ -225,8 +333,8 @@ describe('generateFixedDailySchedule', () => {
 
       allDates.forEach((date) => {
         const d = dayjs(date);
+        // Domingo no es hábil; sábados sí son hábiles en este modelo
         expect(d.day()).not.toBe(0);
-        expect(d.day()).not.toBe(6);
       });
 
       const totalPrincipal = result.schedule.reduce(

@@ -126,8 +126,98 @@ const generateFixedDailySchedule = ({
   startDate,
   frequency = 'DAILY',
   holidays = [],
+  // Legacy compatibility: some callers/tests use totalRate + termDays
+  totalRate,
+  termDays,
 }) => {
   const principalDec = new Decimal(principal);
+
+  const holidaySet = new Set(holidays);
+  const startDayjs = dayjs(startDate);
+
+  // Modo legacy: si se pasa `totalRate` o `termDays`, tratamos esos valores como
+  // tasa total y número de cuotas respectivamente (mantener compatibilidad con tests antiguos)
+  const legacyMode = typeof totalRate !== 'undefined' || typeof termDays !== 'undefined';
+
+  if (legacyMode) {
+    // termDays: número de cuotas (entero positivo)
+    const term = Number(termDays);
+    if (!Number.isInteger(term) || term <= 0) {
+      throw new Error('El plazo (termDays) debe ser un entero positivo');
+    }
+
+    const totalRateDec = new Decimal(totalRate);
+    if (totalRateDec.lt(0)) {
+      throw new Error('La tasa total (totalRate) no puede ser negativa');
+    }
+
+    if (principalDec.lte(0)) throw new Error('El capital (principal) debe ser mayor a cero');
+    if (!dayjs(startDate).isValid()) throw new Error('La fecha de inicio (startDate) no es válida');
+
+    const totalInterest = principalDec.mul(totalRateDec);
+    const totalAmount = principalDec.plus(totalInterest);
+
+    const rawInstallment = totalAmount.div(term);
+    const installmentAmount = rawInstallment.toDecimalPlaces(2, Decimal.ROUND_HALF_UP);
+    const interestPerInstallment = totalInterest
+      .div(term)
+      .toDecimalPlaces(2, Decimal.ROUND_HALF_UP);
+    const principalPerInstallment = installmentAmount.minus(interestPerInstallment);
+
+    const schedule = [];
+    let currentDate = startDayjs;
+    let accumulatedPrincipal = new Decimal(0);
+    let accumulatedInterest = new Decimal(0);
+
+    for (let i = 1; i <= term; i += 1) {
+      if (frequency === 'DAILY') {
+        currentDate = nextBusinessDay(currentDate, holidaySet);
+      } else if (frequency === 'WEEKLY') {
+        currentDate = currentDate.add(1, 'week');
+      } else if (frequency === 'BIWEEKLY') {
+        currentDate = currentDate.add(2, 'week');
+      } else {
+        currentDate = currentDate.add(1, 'month');
+      }
+
+      const isLast = i === term;
+      let cuotaPrincipal;
+      let cuotaInterest;
+      let cuotaAmount;
+
+      if (isLast) {
+        cuotaPrincipal = principalDec.minus(accumulatedPrincipal);
+        cuotaInterest = totalInterest.minus(accumulatedInterest);
+        cuotaAmount = cuotaPrincipal.plus(cuotaInterest);
+      } else {
+        cuotaPrincipal = principalPerInstallment;
+        cuotaInterest = interestPerInstallment;
+        cuotaAmount = installmentAmount;
+      }
+
+      accumulatedPrincipal = accumulatedPrincipal.plus(cuotaPrincipal);
+      accumulatedInterest = accumulatedInterest.plus(cuotaInterest);
+
+      schedule.push({
+        installmentNumber: i,
+        dueDate: currentDate.format('YYYY-MM-DD'),
+        amountDue: cuotaAmount.toFixed(2),
+        principalDue: cuotaPrincipal.toFixed(2),
+        interestDue: cuotaInterest.toFixed(2),
+      });
+    }
+
+    return {
+      schedule,
+      totalAmount: totalAmount.toFixed(2),
+      totalInterest: totalInterest.toFixed(2),
+      installmentAmount: installmentAmount.toFixed(2),
+      expectedEndDate: schedule[schedule.length - 1].dueDate,
+      numberOfPayments: term,
+    };
+  }
+
+  // Modo actual: monthlyRate y termMonths
   const rateDec = new Decimal(monthlyRate);
   const months = Number(termMonths);
 
@@ -135,9 +225,6 @@ const generateFixedDailySchedule = ({
   if (rateDec.lt(0)) throw new Error('La tasa mensual (monthlyRate) no puede ser negativa');
   if (!Number.isInteger(months) || months <= 0) throw new Error('El plazo (termMonths) debe ser un entero positivo');
   if (!dayjs(startDate).isValid()) throw new Error('La fecha de inicio (startDate) no es válida');
-
-  const holidaySet = new Set(holidays);
-  const startDayjs = dayjs(startDate);
 
   // Interés total = capital × tasa mensual × número de meses
   const totalInterest = principalDec.mul(rateDec).mul(months);

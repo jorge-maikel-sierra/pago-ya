@@ -1157,7 +1157,8 @@ const getEditOrganization = asyncHandler(async (req, res) => {
   const { flashError } = req.session;
   delete req.session.flashError;
 
-  // findOrganizationById lanza 404 si la organización no existe — no se necesita verificación manual
+  // findOrganizationById lanza 404 si la organización no existe.
+  // No se necesita verificación manual.
   const organization = await organizationService.findOrganizationById(id);
 
   return res.render('pages/organizations/edit', {

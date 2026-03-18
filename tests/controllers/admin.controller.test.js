@@ -1,4 +1,6 @@
-import { jest, describe, it, expect, beforeEach } from '@jest/globals';
+import { jest } from '@jest/globals';
+
+// Controller tests (consolidated below)
 
 // --- Mocks ---
 const mockGetDashboardKPIs = jest.fn();
@@ -28,11 +30,42 @@ jest.unstable_mockModule('../../src/services/admin.service.js', () => ({
   getDashboardKPIs: mockGetDashboardKPIs,
 }));
 
+// Asegurar mocks usando rutas absolutas (resolver problemas de specifier mismatches)
+jest.unstable_mockModule('/Users/jorgesierra/Documents/dev/pago-ya/src/services/admin.service.js', () => ({
+  getDashboardKPIs: mockGetDashboardKPIs,
+}));
+
 jest.unstable_mockModule('../../src/utils/asyncHandler.js', () => ({
   default: (fn) => fn,
 }));
 
 jest.unstable_mockModule('../../src/config/prisma.js', () => ({
+  default: {
+    $transaction: mockPrismaTransaction,
+    user: {
+      findUnique: mockFindUnique,
+      findMany: mockUserFindMany,
+      findFirst: mockUserFindFirst,
+      findFirstOrThrow: mockUserFindFirst,
+      delete: mockUserDelete,
+      update: jest.fn(),
+      create: jest.fn(),
+    },
+    client: {
+      findMany: mockClientFindMany,
+      findFirst: mockClientFindFirst,
+      update: mockClientUpdate,
+    },
+    loan: { findMany: mockLoanFindMany, findFirst: mockLoanFindFirst, count: mockLoanCount },
+    route: { findMany: mockRouteFindMany, updateMany: mockRouteUpdateMany },
+    incident: { findMany: mockIncidentFindMany, count: mockIncidentCount },
+    paymentSchedule: { findMany: mockPaymentScheduleFindMany },
+    payment: { findMany: mockPaymentFindMany, count: mockPaymentCount },
+    gpsLocation: { deleteMany: mockGpsDeleteMany },
+  },
+}));
+
+jest.unstable_mockModule('/Users/jorgesierra/Documents/dev/pago-ya/src/config/prisma.js', () => ({
   default: {
     $transaction: mockPrismaTransaction,
     user: {

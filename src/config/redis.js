@@ -32,7 +32,14 @@ if (hasRedis) {
 
 const redisClient = redisClientMutable;
 
-if (redisClient) {
+if (process.env.NODE_ENV === 'test') {
+  // En tests evitamos listeners y conexiones reales para no dejar handles abiertos
+  // y para evitar que Jest falle por logs asíncronos.
+  // Retornar null fuerza al sistema a comportarse sin Redis durante las pruebas.
+  // Nota: hasRedis puede ser true en CI, así que forzamos no conectar en test.
+  // eslint-disable-next-line no-console
+  // console.info('[Redis] Deshabilitado en entorno de test');
+} else if (redisClient) {
   redisClient.on('connect', () => {
     console.log('[Redis] Conectado exitosamente');
   });
