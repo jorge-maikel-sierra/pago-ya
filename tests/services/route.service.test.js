@@ -17,13 +17,9 @@ jest.unstable_mockModule('../../src/config/prisma.js', () => ({
   },
 }));
 
-const {
-  findRoutes,
-  searchRoutes,
-  createRoute,
-  findRouteById,
-  updateRoute,
-} = await import('../../src/services/route.service.js');
+const { findRoutes, searchRoutes, createRoute, findRouteById, updateRoute } = await import(
+  '../../src/services/route.service.js'
+);
 
 beforeEach(() => jest.clearAllMocks());
 
@@ -48,5 +44,19 @@ describe('route.service', () => {
   it('findRouteById lanza 404 cuando no existe', async () => {
     mockFindFirst.mockResolvedValue(null);
     await expect(findRouteById('no', 'org1')).rejects.toThrow('Ruta no encontrada');
+  });
+
+  it('updateRoute actualiza la ruta correctamente', async () => {
+    mockUpdate.mockResolvedValue({ id: 'r1', name: 'Nueva Ruta' });
+    const result = await updateRoute('r1', 'org1', { name: 'Nueva Ruta' });
+    expect(mockUpdate).toHaveBeenCalledTimes(1);
+    expect(result.name).toBe('Nueva Ruta');
+  });
+
+  it('updateRoute propaga errores de base de datos', async () => {
+    const err = new Error('Unique constraint');
+    err.code = 'P2002';
+    mockUpdate.mockRejectedValue(err);
+    await expect(updateRoute('r1', 'org1', { name: 'Dup' })).rejects.toThrow('Unique constraint');
   });
 });

@@ -126,9 +126,7 @@ describe('searchCollectors', () => {
 
     await searchCollectors(ORG_ID, 'test');
 
-    expect(mockUserFindMany).toHaveBeenCalledWith(
-      expect.objectContaining({ take: 15 }),
-    );
+    expect(mockUserFindMany).toHaveBeenCalledWith(expect.objectContaining({ take: 15 }));
   });
 });
 
@@ -290,7 +288,12 @@ describe('updateCollector', () => {
 // deleteCollector
 // ===========================
 describe('deleteCollector', () => {
-  const setupDelete = ({ collector = { id: COLLECTOR_ID }, loans = 0, payments = 0, incidents = 0 } = {}) => {
+  const setupDelete = ({
+    collector = { id: COLLECTOR_ID },
+    loans = 0,
+    payments = 0,
+    incidents = 0,
+  } = {}) => {
     mockUserFindFirst.mockResolvedValue(collector);
     // $transaction recibe array de promesas y las resuelve
     mockTransaction.mockImplementation((promises) => Promise.all(promises));

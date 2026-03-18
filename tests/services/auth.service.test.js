@@ -23,8 +23,9 @@ jest.unstable_mockModule('bcryptjs', () => ({
   default: { compare: mockBcryptCompare, hash: jest.fn().mockResolvedValue('$hash') },
 }));
 
-const { registerOrganizationAndUser, loginAdminUser, generateAccessToken } =
-  await import('../../src/services/auth.service.js');
+const { registerOrganizationAndUser, loginAdminUser, generateAccessToken } = await import(
+  '../../src/services/auth.service.js'
+);
 
 const USER_EMAIL = 'test@example.com';
 

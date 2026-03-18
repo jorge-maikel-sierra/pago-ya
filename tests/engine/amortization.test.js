@@ -63,21 +63,25 @@ describe('monthly and other frequencies (current mode)', () => {
   });
 
   it('throws when monthlyRate is negative', () => {
-    expect(() => generateFixedDailySchedule({
-      principal: '100000',
-      monthlyRate: '-0.1',
-      termMonths: 1,
-      startDate: '2026-03-02',
-    })).toThrow('La tasa mensual (monthlyRate) no puede ser negativa');
+    expect(() =>
+      generateFixedDailySchedule({
+        principal: '100000',
+        monthlyRate: '-0.1',
+        termMonths: 1,
+        startDate: '2026-03-02',
+      }),
+    ).toThrow('La tasa mensual (monthlyRate) no puede ser negativa');
   });
 
   it('throws when termMonths is not an integer', () => {
-    expect(() => generateFixedDailySchedule({
-      principal: '100000',
-      monthlyRate: '0.1',
-      termMonths: 1.5,
-      startDate: '2026-03-02',
-    })).toThrow('El plazo (termMonths) debe ser un entero positivo');
+    expect(() =>
+      generateFixedDailySchedule({
+        principal: '100000',
+        monthlyRate: '0.1',
+        termMonths: 1.5,
+        startDate: '2026-03-02',
+      }),
+    ).toThrow('El plazo (termMonths) debe ser un entero positivo');
   });
 
   it('throws when there are no business days in DAILY frequency because all days are holidays', () => {
@@ -90,14 +94,16 @@ describe('monthly and other frequencies (current mode)', () => {
       cursor = cursor.add(1, 'day');
     }
 
-    expect(() => generateFixedDailySchedule({
-      principal: '50000',
-      monthlyRate: '0.05',
-      termMonths: 1,
-      startDate: '2026-03-02',
-      frequency: 'DAILY',
-      holidays,
-    })).toThrow('No se encontraron días de pago en el plazo indicado');
+    expect(() =>
+      generateFixedDailySchedule({
+        principal: '50000',
+        monthlyRate: '0.05',
+        termMonths: 1,
+        startDate: '2026-03-02',
+        frequency: 'DAILY',
+        holidays,
+      }),
+    ).toThrow('No se encontraron días de pago en el plazo indicado');
   });
 });
 
@@ -111,7 +117,7 @@ describe('nextBusinessDay', () => {
 
   it('skips Saturday and Sunday', () => {
     const result = nextBusinessDay(dayjs('2026-02-27'), holidays);
-  // 2026-02-27 + 1 = 2026-02-28 (Saturday) -> es día hábil; debe retornar 2026-02-28
+    // 2026-02-27 + 1 = 2026-02-28 (Saturday) -> es día hábil; debe retornar 2026-02-28
     expect(result.format('YYYY-MM-DD')).toBe('2026-02-28');
   });
 
@@ -159,11 +165,11 @@ describe('generateFixedDailySchedule', () => {
     it('assigns only business days as due dates', () => {
       const result = generateFixedDailySchedule(baseParams);
       result.schedule.forEach((installment) => {
-          const d = dayjs(installment.dueDate);
-          const dayOfWeek = d.day();
-          // Domingo no es hábil; en este modelo Sábado sí es hábil
-          expect(dayOfWeek).not.toBe(0);
-        });
+        const d = dayjs(installment.dueDate);
+        const dayOfWeek = d.day();
+        // Domingo no es hábil; en este modelo Sábado sí es hábil
+        expect(dayOfWeek).not.toBe(0);
+      });
     });
 
     it('sets expectedEndDate to the last installment dueDate', () => {
@@ -198,8 +204,9 @@ describe('generateFixedDailySchedule', () => {
       const dates = res.schedule.map((s) => s.dueDate);
       const first = dayjs(dates[0]);
       const second = dayjs(dates[1]);
-  const monthDiff = second.month() - first.month() === 1 || dayjs(second).diff(first, 'month') === 1;
-  expect(monthDiff).toBe(true);
+      const monthDiff =
+        second.month() - first.month() === 1 || dayjs(second).diff(first, 'month') === 1;
+      expect(monthDiff).toBe(true);
     });
   });
 

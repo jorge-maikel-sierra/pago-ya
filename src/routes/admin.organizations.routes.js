@@ -8,7 +8,10 @@ import {
   updateOrganization,
 } from '../controllers/admin.controller.js';
 import validate from '../middleware/validate.js';
-import { createOrganizationSchema, updateOrganizationSchema } from '../schemas/organization.schema.js';
+import {
+  createOrganizationSchema,
+  updateOrganizationSchema,
+} from '../schemas/organization.schema.js';
 
 // ============================================
 // Admin Organizations Router — Pago Ya
@@ -24,6 +27,11 @@ router.post('/', authorize('SUPER_ADMIN'), validate(createOrganizationSchema), c
 router.get('/:id/edit', authorize('SUPER_ADMIN'), getEditOrganization);
 
 // PUT via method-override desde el formulario HTML (?_method=PUT)
-router.put('/:id', authorize('SUPER_ADMIN'), validate(updateOrganizationSchema), updateOrganization);
+router.put(
+  '/:id',
+  authorize('SUPER_ADMIN'),
+  validate(updateOrganizationSchema),
+  updateOrganization,
+);
 
 export default router;

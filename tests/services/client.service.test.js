@@ -58,4 +58,20 @@ describe('client.service', () => {
     mockFindFirst.mockResolvedValue(null);
     await expect(toggleClientStatus('no', 'org1')).rejects.toThrow('Cliente no encontrado');
   });
+
+  it('updateClient actualiza datos del cliente correctamente', async () => {
+    mockUpdate.mockResolvedValue({ id: 'c1', firstName: 'Juan' });
+    const result = await updateClient('c1', 'org1', { firstName: 'Juan', lastName: 'García' });
+    expect(mockUpdate).toHaveBeenCalledTimes(1);
+    expect(result.firstName).toBe('Juan');
+  });
+
+  it('updateClient lanza error 409 en P2002 (documento duplicado)', async () => {
+    const err = new Error('Unique constraint');
+    err.code = 'P2002';
+    mockUpdate.mockRejectedValue(err);
+    await expect(
+      updateClient('c1', 'org1', { firstName: 'A', documentNumber: '999' }),
+    ).rejects.toMatchObject({ statusCode: 409 });
+  });
 });

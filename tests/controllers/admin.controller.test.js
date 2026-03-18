@@ -31,9 +31,12 @@ jest.unstable_mockModule('../../src/services/admin.service.js', () => ({
 }));
 
 // Asegurar mocks usando rutas absolutas (resolver problemas de specifier mismatches)
-jest.unstable_mockModule('/Users/jorgesierra/Documents/dev/pago-ya/src/services/admin.service.js', () => ({
-  getDashboardKPIs: mockGetDashboardKPIs,
-}));
+jest.unstable_mockModule(
+  '/Users/jorgesierra/Documents/dev/pago-ya/src/services/admin.service.js',
+  () => ({
+    getDashboardKPIs: mockGetDashboardKPIs,
+  }),
+);
 
 jest.unstable_mockModule('../../src/utils/asyncHandler.js', () => ({
   default: (fn) => fn,

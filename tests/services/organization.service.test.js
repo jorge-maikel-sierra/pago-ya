@@ -68,9 +68,7 @@ describe('findOrganizations', () => {
   it('retorna lista sin filtro cuando no se pasa búsqueda', async () => {
     mockFindMany.mockResolvedValue([]);
     await findOrganizations();
-    expect(mockFindMany).toHaveBeenCalledWith(
-      expect.objectContaining({ where: {} }),
-    );
+    expect(mockFindMany).toHaveBeenCalledWith(expect.objectContaining({ where: {} }));
   });
 });
 
@@ -213,7 +211,12 @@ describe('createOrgUser', () => {
     err.code = 'P2002';
     mockUserCreate.mockRejectedValue(err);
     await expect(
-      createOrgUser(ORG_ID, { firstName: 'A', email: 'dup@test.com', role: 'ADMIN', password: 'pw' }),
+      createOrgUser(ORG_ID, {
+        firstName: 'A',
+        email: 'dup@test.com',
+        role: 'ADMIN',
+        password: 'pw',
+      }),
     ).rejects.toMatchObject({ statusCode: 409 });
   });
 
@@ -263,8 +266,8 @@ describe('updateOrgUser', () => {
 
   it('propaga error cuando findFirstOrThrow falla (usuario no en org)', async () => {
     mockUserFindFirstOrThrow.mockRejectedValue(new Error('Not found'));
-    await expect(
-      updateOrgUser('nope', ORG_ID, { firstName: 'A', role: 'ADMIN' }),
-    ).rejects.toThrow('Not found');
+    await expect(updateOrgUser('nope', ORG_ID, { firstName: 'A', role: 'ADMIN' })).rejects.toThrow(
+      'Not found',
+    );
   });
 });
