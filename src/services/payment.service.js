@@ -1,5 +1,11 @@
 import Decimal from 'decimal.js';
 import prisma from '../config/prisma.js';
+import {
+  splitPayment,
+  classifyPayment,
+  nextPeriodDate,
+  buildRestructuredSchedule,
+} from '../engine/payment-split.js';
 
 /**
  * @typedef {object} RegisterPaymentInput
@@ -10,23 +16,33 @@ import prisma from '../config/prisma.js';
  * @property {string} [paymentScheduleId]
  * @property {number} [latitude]
  * @property {number} [longitude]
+ * @property {string} [paymentMethod]
  * @property {string} [notes]
  */
 
 /**
  * @typedef {object} PaymentResult
- * @property {object} payment - Registro creado en la tabla payments
- * @property {object} loan - Préstamo actualizado
- * @property {object} [schedule] - Cuota del cronograma actualizada (si aplica)
+ * @property {object} payment       - Registro creado en la tabla payments
+ * @property {object} loan          - Préstamo actualizado
+ * @property {object} [schedule]    - Cuota del cronograma actualizada (si aplica)
+ * @property {string} paymentType   - Clasificación: PARTIAL_INTEREST | INTEREST_ONLY
+ *                                    | FULL | OVERPAYMENT | PAYOFF
  */
 
 /**
  * Registra un pago individual dentro de una transacción Prisma.
- * 1. Valida que el préstamo exista y esté activo.
- * 2. Encuentra la cuota pendiente más antigua (si no se provee paymentScheduleId).
- * 3. Crea el registro Payment.
- * 4. Actualiza la cuota del cronograma (amountPaid, isPaid, paidAt).
- * 5. Actualiza los totales del préstamo (totalPaid, outstandingBalance, paidPayments, status).
+ *
+ * Flujo:
+ * 1. Carga el préstamo y la cuota pendiente más antigua.
+ * 2. Desglosa el monto en mora / interés / capital / excedente con splitPayment().
+ * 3. Clasifica el tipo de pago con classifyPayment().
+ * 4. Crea el registro Payment con el desglose.
+ * 5. Actualiza la cuota y el préstamo según el tipo:
+ *    - PARTIAL_INTEREST: cuota sigue pendiente.
+ *    - INTEREST_ONLY: cuota marcada pagada; se agrega cuota nueva al final.
+ *    - FULL: cuota marcada pagada; sin cambios al cronograma.
+ *    - OVERPAYMENT: cuota pagada; cuotas restantes restructuradas con nuevo monto.
+ *    - PAYOFF: préstamo liquidado; cuotas restantes marcadas restructured.
  *
  * @param {RegisterPaymentInput} input
  * @param {import('@prisma/client').PrismaClient} [tx] - Prisma transaction client (opcional)
@@ -44,11 +60,13 @@ const processPayment = async (input, tx) => {
     paymentScheduleId,
     latitude,
     longitude,
+    paymentMethod,
     notes,
   } = input;
 
-  const amount = new Decimal(amountPaid);
+  const collectedAt = new Date(offlineCreatedAt);
 
+  // ── 1. Cargar préstamo ──────────────────────────────────────────────────────
   const loan = await db.loan.findUnique({
     where: { id: loanId },
     include: {
@@ -70,12 +88,11 @@ const processPayment = async (input, tx) => {
     throw err;
   }
 
+  // ── 2. Cargar cuota objetivo ────────────────────────────────────────────────
   let schedule;
 
   if (paymentScheduleId) {
-    schedule = await db.paymentSchedule.findUnique({
-      where: { id: paymentScheduleId },
-    });
+    schedule = await db.paymentSchedule.findUnique({ where: { id: paymentScheduleId } });
 
     if (!schedule || schedule.loanId !== loanId) {
       const err = new Error('Cuota del cronograma no encontrada para este préstamo');
@@ -85,70 +102,268 @@ const processPayment = async (input, tx) => {
     }
   } else {
     schedule = await db.paymentSchedule.findFirst({
-      where: { loanId, isPaid: false },
+      where: { loanId, isPaid: false, isRestructured: false },
       orderBy: { dueDate: 'asc' },
     });
   }
 
-  const moraAmount = new Decimal(0);
-  const totalReceived = amount.plus(moraAmount);
+  if (!schedule) {
+    const err = new Error('No hay cuotas pendientes para este préstamo');
+    err.statusCode = 409;
+    err.isOperational = true;
+    throw err;
+  }
 
+  // ── 3. Desglosar y clasificar el pago ──────────────────────────────────────
+  const split = splitPayment(
+    amountPaid,
+    loan.moraAmount,
+    schedule.interestDue,
+    schedule.principalDue,
+  );
+
+  const paymentType = classifyPayment(
+    split,
+    schedule.interestDue,
+    schedule.principalDue,
+    loan.outstandingBalance,
+  );
+
+  // ── 4. Crear registro Payment ───────────────────────────────────────────────
   const payment = await db.payment.create({
     data: {
       loanId,
-      paymentScheduleId: schedule?.id,
+      paymentScheduleId: schedule.id,
       collectorId,
-      amount: amount.toFixed(2),
-      moraAmount: moraAmount.toFixed(2),
-      totalReceived: totalReceived.toFixed(2),
+      amount: new Decimal(amountPaid).toFixed(2),
+      principalApplied: split.principalApplied,
+      interestApplied: split.interestApplied,
+      moraAmount: split.moraApplied,
+      totalReceived: new Decimal(amountPaid).toFixed(2),
+      // Persiste la clasificación del engine para auditoría y visualización en panel
+      paymentType,
       latitude,
       longitude,
+      paymentMethod: paymentMethod || 'CASH',
       notes,
-      collectedAt: new Date(offlineCreatedAt),
+      collectedAt,
     },
   });
 
+  // ── 5. Valores comunes para actualizar el préstamo ──────────────────────────
+  const newInterestPaid = new Decimal(loan.interestPaid).plus(split.interestApplied);
+  const newMora = Decimal.max(new Decimal(loan.moraAmount).minus(split.moraApplied), 0);
+
+  // ── 6. Actualizar cuota y préstamo según tipo de pago ──────────────────────
   let updatedSchedule;
+  let updatedLoan;
 
-  if (schedule) {
-    const newAmountPaid = new Decimal(schedule.amountPaid).plus(amount);
-    const amountDue = new Decimal(schedule.amountDue);
-    const isPaid = newAmountPaid.gte(amountDue);
-
+  if (paymentType === 'PARTIAL_INTEREST') {
+    // Cuota sigue pendiente; solo acumula lo pagado
     updatedSchedule = await db.paymentSchedule.update({
       where: { id: schedule.id },
       data: {
-        amountPaid: newAmountPaid.toFixed(2),
-        isPaid,
-        ...(isPaid && { paidAt: new Date(offlineCreatedAt) }),
+        amountPaid: new Decimal(schedule.amountPaid).plus(amountPaid).toFixed(2),
+      },
+    });
+
+    updatedLoan = await db.loan.update({
+      where: { id: loanId },
+      data: {
+        interestPaid: newInterestPaid.toFixed(2),
+        moraAmount: newMora.toFixed(2),
+      },
+    });
+  } else if (paymentType === 'INTEREST_ONLY') {
+    // Cuota marcada pagada (solo interés cubierto). Se extiende el cronograma.
+    updatedSchedule = await db.paymentSchedule.update({
+      where: { id: schedule.id },
+      data: {
+        amountPaid: new Decimal(schedule.amountPaid).plus(amountPaid).toFixed(2),
+        isPaid: true,
+        paidAt: collectedAt,
+      },
+    });
+
+    // Última cuota del cronograma para calcular la siguiente fecha
+    const lastSchedule = await db.paymentSchedule.findFirst({
+      where: { loanId },
+      orderBy: { installmentNumber: 'desc' },
+    });
+
+    const newDueDate = nextPeriodDate(lastSchedule.dueDate, loan.paymentFrequency);
+
+    await db.paymentSchedule.create({
+      data: {
+        loanId,
+        installmentNumber: lastSchedule.installmentNumber + 1,
+        dueDate: new Date(newDueDate),
+        amountDue: schedule.amountDue,
+        principalDue: schedule.principalDue,
+        interestDue: schedule.interestDue,
+      },
+    });
+
+    updatedLoan = await db.loan.update({
+      where: { id: loanId },
+      data: {
+        interestPaid: newInterestPaid.toFixed(2),
+        moraAmount: newMora.toFixed(2),
+        numberOfPayments: { increment: 1 },
+        paidPayments: { increment: 1 },
+      },
+    });
+  } else if (paymentType === 'FULL') {
+    updatedSchedule = await db.paymentSchedule.update({
+      where: { id: schedule.id },
+      data: {
+        amountPaid: new Decimal(schedule.amountPaid).plus(amountPaid).toFixed(2),
+        isPaid: true,
+        paidAt: collectedAt,
+      },
+    });
+
+    const newTotalPaid = new Decimal(loan.totalPaid).plus(split.principalApplied);
+    const newOutstanding = Decimal.max(
+      new Decimal(loan.outstandingBalance)
+        .minus(split.principalApplied)
+        .minus(split.interestApplied),
+      0,
+    );
+
+    updatedLoan = await db.loan.update({
+      where: { id: loanId },
+      data: {
+        totalPaid: newTotalPaid.toFixed(2),
+        outstandingBalance: newOutstanding.toFixed(2),
+        interestPaid: newInterestPaid.toFixed(2),
+        moraAmount: newMora.toFixed(2),
+        paidPayments: { increment: 1 },
+      },
+    });
+  } else if (paymentType === 'OVERPAYMENT') {
+    updatedSchedule = await db.paymentSchedule.update({
+      where: { id: schedule.id },
+      data: {
+        amountPaid: new Decimal(schedule.amountPaid).plus(amountPaid).toFixed(2),
+        isPaid: true,
+        paidAt: collectedAt,
+      },
+    });
+
+    // Cuotas pendientes que serán reemplazadas
+    const pendingSchedules = await db.paymentSchedule.findMany({
+      where: { loanId, isPaid: false, isRestructured: false },
+      orderBy: { installmentNumber: 'asc' },
+    });
+
+    if (pendingSchedules.length > 0) {
+      await db.paymentSchedule.updateMany({
+        where: { id: { in: pendingSchedules.map((s) => s.id) } },
+        data: { isRestructured: true },
+      });
+
+      const newOutstandingBalance = Decimal.max(
+        new Decimal(loan.outstandingBalance)
+          .minus(split.principalApplied)
+          .minus(split.interestApplied)
+          .minus(split.excess),
+        0,
+      );
+
+      const totalInterest = new Decimal(loan.totalAmount).minus(loan.principalAmount);
+      const remainingInterest = Decimal.max(totalInterest.minus(newInterestPaid), 0);
+      const remainingCapital = Decimal.max(newOutstandingBalance.minus(remainingInterest), 0);
+
+      const newInstallments = buildRestructuredSchedule({
+        remainingCapital: remainingCapital.toFixed(2),
+        remainingInterest: remainingInterest.toFixed(2),
+        originalInstallmentAmount: loan.installmentAmount,
+        pendingInstallments: pendingSchedules,
+        frequency: loan.paymentFrequency,
+      });
+
+      if (newInstallments.length > 0) {
+        await db.paymentSchedule.createMany({
+          data: newInstallments.map((inst) => ({
+            loanId,
+            installmentNumber: inst.installmentNumber,
+            dueDate: new Date(inst.dueDate),
+            amountDue: inst.amountDue,
+            principalDue: inst.principalDue,
+            interestDue: inst.interestDue,
+          })),
+        });
+      }
+
+      const newNumberOfPayments =
+        loan.numberOfPayments - pendingSchedules.length + newInstallments.length;
+
+      const newTotalPaid = new Decimal(loan.totalPaid)
+        .plus(split.principalApplied)
+        .plus(split.excess);
+
+      updatedLoan = await db.loan.update({
+        where: { id: loanId },
+        data: {
+          totalPaid: newTotalPaid.toFixed(2),
+          outstandingBalance: newOutstandingBalance.toFixed(2),
+          interestPaid: newInterestPaid.toFixed(2),
+          moraAmount: newMora.toFixed(2),
+          numberOfPayments: newNumberOfPayments,
+          paidPayments: { increment: 1 },
+          installmentAmount: newInstallments[0]?.amountDue ?? loan.installmentAmount,
+        },
+      });
+    } else {
+      // Sin cuotas pendientes: el préstamo queda completado
+      updatedLoan = await db.loan.update({
+        where: { id: loanId },
+        data: {
+          outstandingBalance: '0.00',
+          interestPaid: newInterestPaid.toFixed(2),
+          moraAmount: newMora.toFixed(2),
+          status: 'COMPLETED',
+          actualEndDate: collectedAt,
+          paidPayments: { increment: 1 },
+        },
+      });
+    }
+  } else if (paymentType === 'PAYOFF') {
+    updatedSchedule = await db.paymentSchedule.update({
+      where: { id: schedule.id },
+      data: {
+        amountPaid: new Decimal(schedule.amountPaid).plus(amountPaid).toFixed(2),
+        isPaid: true,
+        paidAt: collectedAt,
+      },
+    });
+
+    // Marcar todas las cuotas restantes como restructured (ya no aplican)
+    await db.paymentSchedule.updateMany({
+      where: { loanId, isPaid: false, isRestructured: false },
+      data: { isRestructured: true },
+    });
+
+    updatedLoan = await db.loan.update({
+      where: { id: loanId },
+      data: {
+        totalPaid: new Decimal(loan.totalAmount).toFixed(2),
+        outstandingBalance: '0.00',
+        interestPaid: newInterestPaid.toFixed(2),
+        moraAmount: newMora.toFixed(2),
+        status: 'COMPLETED',
+        actualEndDate: collectedAt,
+        paidPayments: { increment: 1 },
       },
     });
   }
-
-  const newTotalPaid = new Decimal(loan.totalPaid).plus(amount);
-  const newOutstanding = new Decimal(loan.totalAmount).minus(newTotalPaid);
-  const paidSchedules = await db.paymentSchedule.count({
-    where: { loanId, isPaid: true },
-  });
-  const isCompleted = newOutstanding.lte(0);
-
-  const updatedLoan = await db.loan.update({
-    where: { id: loanId },
-    data: {
-      totalPaid: newTotalPaid.toFixed(2),
-      outstandingBalance: Decimal.max(newOutstanding, new Decimal(0)).toFixed(2),
-      paidPayments: paidSchedules,
-      ...(isCompleted && {
-        status: 'COMPLETED',
-        actualEndDate: new Date(offlineCreatedAt),
-      }),
-    },
-  });
 
   return {
     payment,
     loan: updatedLoan,
     schedule: updatedSchedule,
+    paymentType,
     clientName: `${loan.client.firstName} ${loan.client.lastName}`,
     clientPhone: loan.client.phone,
     numberOfPayments: loan.numberOfPayments,
@@ -228,7 +443,7 @@ const batchSync = async (payments, collectorId) => {
 /**
  * @typedef {object} AdminPaymentInput
  * @property {string} loanId
- * @property {string} amountPaid - Monto total recibido (capital + mora)
+ * @property {string} amountPaid - Monto total recibido
  * @property {string} paymentDate - Fecha del pago (YYYY-MM-DD o ISO)
  * @property {string} collectorId
  * @property {string} [paymentMethod]
@@ -236,145 +451,49 @@ const batchSync = async (payments, collectorId) => {
  */
 
 /**
- * Registra un pago desde el panel administrativo con lógica de distribución
- * mora/capital en una única transacción Prisma.
+ * Registra un pago desde el panel administrativo.
  *
- * La diferencia con registerPayment (API móvil) es que este endpoint recibe
- * paymentDate como campo explícito del formulario HTML, mientras que la API
- * móvil usa offlineCreatedAt para soporte offline.
+ * Delega al core `processPayment` reutilizando toda la lógica de desglose
+ * interés/capital y restructuración del cronograma. La única diferencia con
+ * la API móvil es el campo de fecha: aquí se recibe `paymentDate` (formulario HTML)
+ * en lugar de `offlineCreatedAt`.
  *
  * @param {AdminPaymentInput} input
- * @returns {Promise<{ payment: object, loan: object, client: object }>}
+ * @returns {Promise<PaymentResult>}
  */
 export const registerAdminPayment = async (input) => {
   const { loanId, amountPaid, paymentDate, collectorId, paymentMethod, notes } = input;
-  const amountDecimal = new Decimal(amountPaid);
+
   const parseLocalDateTime = (value) => {
-    if (!value) return new Date();
-    if (value.includes('T')) return new Date(value);
+    if (!value) return new Date().toISOString();
+    if (value.includes('T')) return value;
     const [y, m, d] = value.split('-').map(Number);
     const now = new Date();
-    return new Date(y, (m || 1) - 1, d || 1, now.getHours(), now.getMinutes(), now.getSeconds());
+    return new Date(
+      y,
+      (m || 1) - 1,
+      d || 1,
+      now.getHours(),
+      now.getMinutes(),
+      now.getSeconds(),
+    ).toISOString();
   };
-  const collectedAt = parseLocalDateTime(paymentDate);
 
-  return prisma.$transaction(async (tx) => {
-    const loan = await tx.loan.findUnique({
-      where: { id: loanId },
-      include: {
-        client: { select: { firstName: true, lastName: true, phone: true } },
-        collector: { select: { firstName: true, lastName: true } },
-        paymentSchedule: {
-          where: { isPaid: false },
-          orderBy: { installmentNumber: 'asc' },
+  return prisma.$transaction(
+    (tx) =>
+      processPayment(
+        {
+          loanId,
+          amountPaid,
+          offlineCreatedAt: parseLocalDateTime(paymentDate),
+          collectorId,
+          paymentMethod: paymentMethod || 'CASH',
+          notes,
         },
-      },
-    });
-
-    if (!loan) {
-      const err = new Error('Préstamo no encontrado');
-      err.statusCode = 404;
-      throw err;
-    }
-
-    if (loan.status !== 'ACTIVE') {
-      const err = new Error('El préstamo no está activo');
-      err.statusCode = 409;
-      throw err;
-    }
-
-    const currentOutstanding = new Decimal(loan.outstandingBalance);
-    const currentTotalPaid = new Decimal(loan.totalPaid);
-    const currentMora = new Decimal(loan.moraAmount);
-
-    // Si hay mora pendiente, el pago se aplica primero a la mora
-    let moraPayment = new Decimal(0);
-    let capitalPayment = amountDecimal;
-
-    if (currentMora.gt(0)) {
-      if (amountDecimal.gte(currentMora)) {
-        moraPayment = currentMora;
-        capitalPayment = amountDecimal.minus(currentMora);
-      } else {
-        moraPayment = amountDecimal;
-        capitalPayment = new Decimal(0);
-      }
-    }
-
-    const newOutstanding = Decimal.max(currentOutstanding.minus(capitalPayment), 0);
-    const newTotalPaid = currentTotalPaid.plus(capitalPayment);
-    const newMora = currentMora.minus(moraPayment);
-    const isFullyPaid = newOutstanding.eq(0);
-
-    const updatedLoan = await tx.loan.update({
-      where: { id: loanId },
-      data: {
-        totalPaid: newTotalPaid.toFixed(2),
-        outstandingBalance: newOutstanding.toFixed(2),
-        moraAmount: newMora.toFixed(2),
-        paidPayments: { increment: 1 },
-        status: isFullyPaid ? 'COMPLETED' : 'ACTIVE',
-        ...(isFullyPaid && { actualEndDate: collectedAt }),
-      },
-    });
-
-    if (capitalPayment.gt(0) && loan.paymentSchedule.length > 0) {
-      let remaining = capitalPayment;
-
-      const scheduleUpdates = loan.paymentSchedule.reduce((updates, schedule) => {
-        if (remaining.lte(0)) return updates;
-
-        const amountDue = new Decimal(schedule.amountDue);
-        const alreadyPaid = new Decimal(schedule.amountPaid);
-        const pendingOnSchedule = amountDue.minus(alreadyPaid);
-
-        if (pendingOnSchedule.lte(0)) return updates;
-
-        const payThisSchedule = Decimal.min(remaining, pendingOnSchedule);
-        const newAmountPaid = alreadyPaid.plus(payThisSchedule);
-        const isPaid = newAmountPaid.gte(amountDue);
-        remaining = remaining.minus(payThisSchedule);
-
-        updates.push({
-          id: schedule.id,
-          amountPaid: newAmountPaid.toFixed(2),
-          isPaid,
-          paidAt: isPaid ? collectedAt : null,
-        });
-
-        return updates;
-      }, []);
-
-      await Promise.all(
-        scheduleUpdates.map((update) =>
-          tx.paymentSchedule.update({
-            where: { id: update.id },
-            data: {
-              amountPaid: update.amountPaid,
-              isPaid: update.isPaid,
-              ...(update.paidAt && { paidAt: update.paidAt }),
-            },
-          }),
-        ),
-      );
-    }
-
-    const payment = await tx.payment.create({
-      data: {
-        loanId,
-        collectorId,
-        amount: capitalPayment.toFixed(2),
-        moraAmount: moraPayment.toFixed(2),
-        totalReceived: amountDecimal.toFixed(2),
-        paymentMethod: paymentMethod || 'CASH',
-        notes: notes || null,
-        collectedAt,
-        telegramSent: false,
-      },
-    });
-
-    return { payment, loan: updatedLoan, client: loan.client };
-  });
+        tx,
+      ),
+    { timeout: 10000 },
+  );
 };
 
 export { processPayment, registerPayment, batchSync };
