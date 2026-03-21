@@ -165,8 +165,11 @@ export const findPayments = async (
       select: {
         id: true,
         amount: true,
+        principalApplied: true,
+        interestApplied: true,
         moraAmount: true,
         totalReceived: true,
+        paymentType: true,
         paymentMethod: true,
         telegramSent: true,
         notes: true,
