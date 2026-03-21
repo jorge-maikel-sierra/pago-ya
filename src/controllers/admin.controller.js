@@ -285,14 +285,6 @@ const previewLoan = asyncHandler(async (req, res) => {
       field: e.path.join('.'),
       message: e.message,
     }));
-    // Loguear detalles para facilitar depuración en entornos de desarrollo
-    if (process.env.NODE_ENV !== 'production') {
-      // eslint-disable-next-line no-console
-      console.debug('[previewLoan] payload inválido', {
-        body: req.body,
-        errors: parsed.error.errors,
-      });
-    }
 
     return apiResponse.error(res, 'Datos de previsualización inválidos', 422, errors);
   }
@@ -709,7 +701,7 @@ const createPayment = asyncHandler(async (req, res) => {
   await enqueuePaymentReceipt({
     paymentId: result.payment.id,
     chatId: process.env.TELEGRAM_CHAT_ID,
-    clientName: `${result.client.firstName} ${result.client.lastName}`,
+    clientName: result.clientName,
     amount: result.payment.amount,
     moraAmount: result.payment.moraAmount,
     totalReceived: result.payment.totalReceived,
@@ -1194,6 +1186,24 @@ const updateOrganization = asyncHandler(async (req, res) => {
   }
 });
 
+/**
+ * GET /admin/api/loans/:id/next-installment
+ * Retorna la cuota pendiente más antigua de un préstamo junto con el saldo de mora.
+ * Usado por el formulario de pago para calcular el desglose predictivo en el cliente.
+ *
+ * @param {import('express').Request} req
+ * @param {import('express').Response} res
+ */
+const getLoanNextInstallment = asyncHandler(async (req, res) => {
+  const data = await loanService.getNextInstallment(req.params.id, req.user.organizationId);
+
+  if (!data) {
+    return apiResponse.error(res, 'Préstamo no encontrado', 404);
+  }
+
+  return apiResponse.success(res, data);
+});
+
 export {
   getLogin,
   postLogin,
@@ -1241,4 +1251,5 @@ export {
   createOrganization,
   getEditOrganization,
   updateOrganization,
+  getLoanNextInstallment,
 };

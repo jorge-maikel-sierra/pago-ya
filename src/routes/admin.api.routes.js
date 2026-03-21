@@ -12,5 +12,6 @@ router.use(authorize('SUPER_ADMIN', 'ADMIN'));
 router.get('/customers/search', adminController.searchCustomers);
 router.get('/collectors/search', adminController.searchCollectors);
 router.get('/collection_routes/search', adminController.searchRoutes);
+router.get('/loans/:id/next-installment', adminController.getLoanNextInstallment);
 
 export default router;
