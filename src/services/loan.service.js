@@ -88,6 +88,7 @@ export const findLoanById = async (id, organizationId) => {
           amountPaid: true,
           moraCharged: true,
           isPaid: true,
+          isRestructured: true,
           paidAt: true,
         },
       },
@@ -97,8 +98,11 @@ export const findLoanById = async (id, organizationId) => {
         select: {
           id: true,
           amount: true,
+          principalApplied: true,
+          interestApplied: true,
           moraAmount: true,
           totalReceived: true,
+          paymentType: true,
           paymentMethod: true,
           notes: true,
           collectedAt: true,
@@ -261,6 +265,55 @@ export const getNewPaymentFormData = async (organizationId) => {
   ]);
 
   return { loans, collectors };
+};
+
+/**
+ * Obtiene la cuota pendiente más antigua de un préstamo y el saldo de mora actual.
+ * Usado por el panel de pago para mostrar el desglose predictivo.
+ *
+ * @param {string} id - UUID del préstamo
+ * @param {string} organizationId - UUID de la organización (scope multi-tenant)
+ * @returns {Promise<{ installmentAmount: string, principalDue: string,
+ *   interestDue: string, amountPaid: string, moraAmount: string,
+ *   outstandingBalance: string, installmentNumber: number,
+ *   dueDate: string } | null>}
+ */
+export const getNextInstallment = async (id, organizationId) => {
+  const loan = await prisma.loan.findFirst({
+    where: { id, organizationId },
+    select: {
+      outstandingBalance: true,
+      moraAmount: true,
+      installmentAmount: true,
+      status: true,
+      paymentSchedule: {
+        where: { isPaid: false, isRestructured: false },
+        orderBy: { dueDate: 'asc' },
+        take: 1,
+        select: {
+          id: true,
+          installmentNumber: true,
+          dueDate: true,
+          amountDue: true,
+          principalDue: true,
+          interestDue: true,
+          amountPaid: true,
+        },
+      },
+    },
+  });
+
+  if (!loan) return null;
+
+  const nextSchedule = loan.paymentSchedule[0] ?? null;
+
+  return {
+    outstandingBalance: loan.outstandingBalance.toString(),
+    moraAmount: loan.moraAmount.toString(),
+    installmentAmount: loan.installmentAmount.toString(),
+    status: loan.status,
+    nextSchedule,
+  };
 };
 
 /**
