@@ -284,10 +284,19 @@ const processPayment = async (input, tx) => {
       });
 
       if (newInstallments.length > 0) {
+        // Las cuotas originales siguen en BD marcadas como isRestructured=true.
+        // Para evitar colisión con el índice único (loan_id, installment_number),
+        // numeramos las nuevas cuotas desde el máximo existente en el cronograma.
+        const lastExisting = await db.paymentSchedule.findFirst({
+          where: { loanId },
+          orderBy: { installmentNumber: 'desc' },
+        });
+        const baseNumber = lastExisting?.installmentNumber ?? 0;
+
         await db.paymentSchedule.createMany({
-          data: newInstallments.map((inst) => ({
+          data: newInstallments.map((inst, idx) => ({
             loanId,
-            installmentNumber: inst.installmentNumber,
+            installmentNumber: baseNumber + idx + 1,
             dueDate: new Date(inst.dueDate),
             amountDue: inst.amountDue,
             principalDue: inst.principalDue,

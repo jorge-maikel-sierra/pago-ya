@@ -77,6 +77,12 @@ const PENDING_SCHEDS = [2, 3, 4, 5].map((n) => ({
   isRestructured: false,
 }));
 
+/**
+ * Cuota con el número más alto del cronograma (usada para calcular
+ * el próximo installmentNumber al crear cuotas restructuradas).
+ */
+const LAST_SCHED = { ...PENDING_SCHEDS[PENDING_SCHEDS.length - 1] };
+
 /** Construye un db mock parametrizable para cada escenario */
 const makeDb = (loanOverride = {}, scheduleOverride = {}) => ({
   loan: {
@@ -93,7 +99,12 @@ const makeDb = (loanOverride = {}, scheduleOverride = {}) => ({
     })),
   },
   paymentSchedule: {
-    findFirst: jest.fn().mockResolvedValue({ ...SCHED_1, ...scheduleOverride }),
+    // Primera llamada: cuota pendiente a pagar.
+    // Segunda llamada (solo OVERPAYMENT): cuota con installmentNumber más alto.
+    findFirst: jest
+      .fn()
+      .mockResolvedValueOnce({ ...SCHED_1, ...scheduleOverride })
+      .mockResolvedValue(LAST_SCHED),
     findUnique: jest.fn().mockResolvedValue({ ...SCHED_1, ...scheduleOverride }),
     findMany: jest.fn().mockResolvedValue(PENDING_SCHEDS),
     create: jest.fn().mockResolvedValue({}),
@@ -196,6 +207,13 @@ describe('Escenario 2 — Pago OVERPAYMENT (abono anticipado a capital)', () => 
 
   it('crea el nuevo cronograma restructurado', () => {
     expect(db.paymentSchedule.createMany).toHaveBeenCalledTimes(1);
+  });
+
+  it('INVARIANTE: los nuevos installmentNumber son mayores al último existente (evita colisión de clave única)', () => {
+    // LAST_SCHED.installmentNumber = 5 → las nuevas cuotas deben comenzar en 6
+    const createManyCall = db.paymentSchedule.createMany.mock.calls[0][0];
+    const newNumbers = createManyCall.data.map((r) => r.installmentNumber);
+    expect(Math.min(...newNumbers)).toBeGreaterThan(LAST_SCHED.installmentNumber);
   });
 
   it('INVARIANTE: split — interés=10000, capital=20000, exceso=30000', () => {
