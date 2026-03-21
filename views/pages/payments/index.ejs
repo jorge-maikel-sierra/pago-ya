@@ -191,19 +191,35 @@ function pageLink(p) {
             <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wide">Cliente</th>
             <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wide">Cobrador</th>
             <th class="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase tracking-wide">Capital</th>
+            <th class="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase tracking-wide">Interés</th>
             <th class="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase tracking-wide">Mora</th>
             <th class="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase tracking-wide">Total recibido</th>
+            <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wide">Tipo</th>
             <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wide">Método</th>
             <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wide">Telegram</th>
           </tr>
         </thead>
         <tbody class="divide-y divide-gray-100">
+          <%
+            /**
+             * Mapa de tipos de pago del engine para mostrar etiquetas en el historial.
+             * Refleja los PaymentType de payment-split.js (persistidos en payments.payment_type).
+             */
+            const PAYMENT_TYPE_BADGE = {
+              PARTIAL_INTEREST: { bg: 'bg-orange-100', text: 'text-orange-700', label: 'Parcial'         },
+              INTEREST_ONLY:    { bg: 'bg-blue-100',   text: 'text-blue-700',   label: 'Solo interés'    },
+              FULL:             { bg: 'bg-green-100',  text: 'text-green-700',  label: 'Completo'        },
+              OVERPAYMENT:      { bg: 'bg-purple-100', text: 'text-purple-700', label: 'Abono anticipado' },
+              PAYOFF:           { bg: 'bg-teal-100',   text: 'text-teal-700',   label: 'Liquidación'     },
+            };
+          %>
           <% payments.forEach(function(payment) { %>
             <%
               const methodInfo = METHOD_BADGE[payment.paymentMethod]
                 || { bg: 'bg-gray-100', text: 'text-gray-500', label: payment.paymentMethod };
+              const typeInfo = PAYMENT_TYPE_BADGE[payment.paymentType]
+                || { bg: 'bg-gray-100', text: 'text-gray-500', label: '—' };
 
-              // payment.moraAmount es la mora efectivamente cobrada en este pago (fuente de verdad)
               const moraAmount = Number(payment.moraAmount ?? 0);
               const hasMora = !Number.isNaN(moraAmount) && moraAmount > 0;
             %>
@@ -231,9 +247,14 @@ function pageLink(p) {
                 <% } %>
               </td>
 
-              <!-- Capital -->
+              <!-- Capital aplicado -->
               <td class="px-4 py-3 text-right font-medium text-gray-700">
-                <%= formatCOP(payment.amount) %>
+                <%= parseFloat(payment.principalApplied) > 0 ? formatCOP(payment.principalApplied) : '—' %>
+              </td>
+
+              <!-- Interés aplicado -->
+              <td class="px-4 py-3 text-right text-blue-600">
+                <%= parseFloat(payment.interestApplied) > 0 ? formatCOP(payment.interestApplied) : '—' %>
               </td>
 
               <!-- Mora -->
@@ -248,6 +269,14 @@ function pageLink(p) {
               <!-- Total recibido -->
               <td class="px-4 py-3 text-right font-semibold text-brand-navy">
                 <%= formatCOP(payment.totalReceived) %>
+              </td>
+
+              <!-- Tipo de pago -->
+              <td class="px-4 py-3">
+                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold
+                             <%= typeInfo.bg %> <%= typeInfo.text %>">
+                  <%= typeInfo.label %>
+                </span>
               </td>
 
               <!-- Método de pago -->
