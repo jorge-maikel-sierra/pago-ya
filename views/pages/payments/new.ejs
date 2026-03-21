@@ -4,17 +4,12 @@
  * Formulario para registrar un nuevo pago desde el panel administrativo.
  *
  * Variables locales esperadas:
- * - loans: Array de préstamos activos con client incluido
+ * - loans:      Array de préstamos activos con client, outstandingBalance, installmentAmount
  * - collectors: Array de cobradores activos
- * - user: Usuario autenticado
- * - flashSucess, flashError: Mensajes flash opcionales
+ * - user:       Usuario autenticado (sesión)
+ * - flashError: Mensaje flash de error (opcional)
  */
 
-/**
- * Formatea valores monetarios en COP.
- * @param {number|string} amount
- * @returns {string}
- */
 function formatCOP(amount) {
   if (amount == null) return '$0';
   return new Intl.NumberFormat('es-CO', {
@@ -25,16 +20,13 @@ function formatCOP(amount) {
   }).format(amount);
 }
 
-/**
- * Devuelve la fecha de hoy en formato YYYY-MM-DD para inputs date.
- * @returns {string}
- */
 function todayISO() {
   const now = new Date();
-  const year = now.getFullYear();
-  const month = String(now.getMonth() + 1).padStart(2, '0');
-  const day = String(now.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
+  return [
+    now.getFullYear(),
+    String(now.getMonth() + 1).padStart(2, '0'),
+    String(now.getDate()).padStart(2, '0'),
+  ].join('-');
 }
 %>
 <%- include('../../layouts/header') %>
@@ -48,7 +40,7 @@ function todayISO() {
     <a href="/admin/payments" class="btn-back">←</a>
     <div>
       <h1 class="page-title">Registrar Nuevo Pago</h1>
-      <p class="page-subtitle">Ingresa los datos del recaudo realizado</p>
+      <p class="page-subtitle">Selecciona el préstamo y el monto recibido</p>
     </div>
   </div>
 
@@ -64,128 +56,501 @@ function todayISO() {
     </div>
   <% } %>
 
-  <!-- =========================================
-       FORMULARIO DE PAGO
-  ========================================= -->
-  <form method="POST" action="/admin/payments"
-        class="form-card space-y-6">
+  <div class="grid grid-cols-1 xl:grid-cols-5 gap-6">
 
-    <!-- Préstamo / Cliente — ocupa toda la fila por el texto largo del select -->
-    <div class="form-group">
-      <label for="loanId" class="form-label">
-        Préstamo / Cliente <span class="text-red-500">*</span>
-      </label>
-      <select id="loanId" name="loanId" required class="form-select">
-        <option value="">— Selecciona un préstamo —</option>
-        <% loans.forEach(function(loan) { %>
-          <%
-            const clientName = loan.client
-              ? loan.client.firstName + ' ' + loan.client.lastName
-              : 'Sin cliente';
-            const loanInfo = `${clientName} - Saldo: ${formatCOP(loan.outstandingBalance)} - Cuota: ${formatCOP(loan.installmentAmount)}`;
-          %>
-          <option value="<%= loan.id %>" data-installment="<%= loan.installmentAmount %>">
-            <%= loanInfo %>
-          </option>
-        <% }); %>
-      </select>
-      <p class="form-hint">Solo se muestran préstamos con estado ACTIVO</p>
-    </div>
+    <!-- =========================================
+         FORMULARIO (izquierda / ocupa 3 cols)
+    ========================================= -->
+    <form method="POST" action="/admin/payments"
+          id="payment-form"
+          class="xl:col-span-3 form-card space-y-6">
 
-    <!-- Fila: Monto · Fecha · Cobrador · Método -->
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-6 gap-y-5">
-
-      <!-- Monto a pagar -->
+      <!-- Préstamo / Cliente -->
       <div class="form-group">
-        <label for="amountPaid" class="form-label">
-          Monto Recibido <span class="text-red-500">*</span>
+        <label for="loanId" class="form-label">
+          Préstamo / Cliente <span class="text-red-500">*</span>
         </label>
-        <div class="relative">
-          <span class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-sm">$</span>
-          <input
-            type="number"
-            id="amountPaid"
-            name="amountPaid"
-            required
-            min="1"
-            step="0.01"
-            placeholder="0.00"
-            class="form-input pl-8 tabular-nums"
-          />
-        </div>
-        <p class="form-hint">Valor exacto recibido del cliente</p>
-      </div>
-
-      <!-- Fecha del pago -->
-      <div class="form-group">
-        <label for="paymentDate" class="form-label">
-          Fecha del Pago <span class="text-red-500">*</span>
-        </label>
-        <input
-          type="date"
-          id="paymentDate"
-          name="paymentDate"
-          required
-          value="<%= todayISO() %>"
-          class="form-input"
-        />
-      </div>
-
-      <!-- Cobrador -->
-      <div class="form-group">
-        <label for="collectorId" class="form-label">
-          Cobrador <span class="text-red-500">*</span>
-        </label>
-        <select id="collectorId" name="collectorId" required class="form-select">
-          <option value="">— Selecciona un cobrador —</option>
-          <% collectors.forEach(function(collector) { %>
-            <option value="<%= collector.id %>"
-              <%= collector.id === user.id ? 'selected' : '' %>>
-              <%= collector.firstName %> <%= collector.lastName %>
+        <select id="loanId" name="loanId" required class="form-select">
+          <option value="">— Selecciona un préstamo —</option>
+          <% loans.forEach(function(loan) { %>
+            <%
+              const clientName = loan.client
+                ? loan.client.firstName + ' ' + loan.client.lastName
+                : 'Sin cliente';
+              const loanInfo = `${clientName} — Saldo: ${formatCOP(loan.outstandingBalance)} — Cuota: ${formatCOP(loan.installmentAmount)}`;
+            %>
+            <option value="<%= loan.id %>"
+                    data-installment="<%= loan.installmentAmount %>"
+                    data-outstanding="<%= loan.outstandingBalance %>">
+              <%= loanInfo %>
             </option>
           <% }); %>
         </select>
+        <p class="form-hint">Solo se muestran préstamos con estado ACTIVO</p>
       </div>
 
-      <!-- Método de pago -->
+      <!-- Fila: Monto · Fecha · Cobrador · Método -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-5">
+
+        <!-- Monto -->
+        <div class="form-group">
+          <label for="amountPaid" class="form-label">
+            Monto Recibido <span class="text-red-500">*</span>
+          </label>
+          <div class="relative">
+            <span class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-sm">$</span>
+            <input
+              type="number"
+              id="amountPaid"
+              name="amountPaid"
+              required
+              min="1"
+              step="1"
+              placeholder="0"
+              class="form-input pl-8 tabular-nums"
+            />
+          </div>
+          <!-- Accesos rápidos al monto de la cuota -->
+          <div id="quick-amounts" class="mt-2 flex flex-wrap gap-2 hidden">
+            <button type="button"
+                    id="btn-exact"
+                    class="text-xs px-2.5 py-1 rounded-full border border-brand-green text-brand-green hover:bg-brand-green hover:text-white transition-colors font-medium">
+              Cuota exacta
+            </button>
+            <button type="button"
+                    id="btn-interest"
+                    class="text-xs px-2.5 py-1 rounded-full border border-blue-400 text-blue-600 hover:bg-blue-400 hover:text-white transition-colors font-medium">
+              Solo interés
+            </button>
+            <button type="button"
+                    id="btn-payoff"
+                    class="text-xs px-2.5 py-1 rounded-full border border-teal-500 text-teal-600 hover:bg-teal-500 hover:text-white transition-colors font-medium">
+              Liquidar todo
+            </button>
+          </div>
+        </div>
+
+        <!-- Fecha del pago -->
+        <div class="form-group">
+          <label for="paymentDate" class="form-label">
+            Fecha del Pago <span class="text-red-500">*</span>
+          </label>
+          <input
+            type="date"
+            id="paymentDate"
+            name="paymentDate"
+            required
+            value="<%= todayISO() %>"
+            class="form-input"
+          />
+        </div>
+
+        <!-- Cobrador -->
+        <div class="form-group">
+          <label for="collectorId" class="form-label">
+            Cobrador <span class="text-red-500">*</span>
+          </label>
+          <select id="collectorId" name="collectorId" required class="form-select">
+            <option value="">— Selecciona un cobrador —</option>
+            <% collectors.forEach(function(collector) { %>
+              <option value="<%= collector.id %>"
+                <%= collector.id === user.id ? 'selected' : '' %>>
+                <%= collector.firstName %> <%= collector.lastName %>
+              </option>
+            <% }); %>
+          </select>
+        </div>
+
+        <!-- Método de pago -->
+        <div class="form-group">
+          <label for="paymentMethod" class="form-label">Método de Pago</label>
+          <select id="paymentMethod" name="paymentMethod" class="form-select">
+            <option value="CASH" selected>💵 Efectivo</option>
+            <option value="TRANSFER">🏦 Transferencia</option>
+            <option value="NEQUI">📱 Nequi</option>
+            <option value="DAVIPLATA">📱 Daviplata</option>
+          </select>
+        </div>
+
+      </div>
+
+      <!-- Notas -->
       <div class="form-group">
-        <label for="paymentMethod" class="form-label">Método de Pago</label>
-        <select id="paymentMethod" name="paymentMethod" class="form-select">
-          <option value="CASH" selected>Efectivo</option>
-          <option value="TRANSFER">Transferencia</option>
-          <option value="NEQUI">Nequi</option>
-          <option value="DAVIPLATA">Daviplata</option>
-        </select>
+        <label for="notes" class="form-label">Notas (opcional)</label>
+        <textarea
+          id="notes"
+          name="notes"
+          rows="2"
+          placeholder="Observaciones adicionales..."
+          class="form-textarea"
+        ></textarea>
       </div>
 
-    </div>
+      <!-- Botones -->
+      <div class="flex flex-col sm:flex-row gap-3 pt-4 border-t border-gray-100">
+        <button type="submit" id="btn-submit"
+                class="flex-1 btn-primary justify-center">
+          💰 Registrar Recaudo
+        </button>
+        <a href="/admin/payments" class="flex-1 btn-secondary justify-center">
+          Cancelar
+        </a>
+      </div>
 
-    <!-- Notas — ocupa toda la fila -->
-    <div class="form-group">
-      <label for="notes" class="form-label">Notas (opcional)</label>
-      <textarea
-        id="notes"
-        name="notes"
-        rows="3"
-        placeholder="Observaciones adicionales sobre el pago..."
-        class="form-textarea"
-      ></textarea>
-    </div>
+    </form>
 
     <!-- =========================================
-         BOTONES DE ACCIÓN
+         PANEL DE DESGLOSE PREDICTIVO (derecha / 2 cols)
     ========================================= -->
-    <div class="flex flex-col sm:flex-row gap-3 pt-4 border-t border-gray-100">
-      <button type="submit" class="flex-1 btn-primary justify-center">
-        💰 Registrar Recaudo
-      </button>
-      <a href="/admin/payments" class="flex-1 btn-secondary justify-center">
-        Cancelar
-      </a>
+    <div class="xl:col-span-2 space-y-4">
+
+      <!-- Cuota pendiente activa -->
+      <div id="panel-installment"
+           class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden hidden">
+        <div class="px-5 py-3 border-b border-gray-100 flex items-center justify-between">
+          <h2 class="text-sm font-semibold text-brand-navy uppercase tracking-wide">
+            📋 Cuota Pendiente
+          </h2>
+          <span id="installment-badge"
+                class="text-xs font-medium px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-700">
+            #<span id="inst-number">—</span>
+          </span>
+        </div>
+        <dl class="divide-y divide-gray-50 text-sm">
+          <div class="flex justify-between px-5 py-2.5">
+            <dt class="text-gray-500">Vencimiento</dt>
+            <dd id="inst-due-date" class="font-medium text-gray-800">—</dd>
+          </div>
+          <div class="flex justify-between px-5 py-2.5">
+            <dt class="text-gray-500">Interés de la cuota</dt>
+            <dd id="inst-interest" class="font-medium text-blue-600 tabular-nums">—</dd>
+          </div>
+          <div class="flex justify-between px-5 py-2.5">
+            <dt class="text-gray-500">Capital de la cuota</dt>
+            <dd id="inst-principal" class="font-medium text-gray-800 tabular-nums">—</dd>
+          </div>
+          <div class="flex justify-between px-5 py-2.5">
+            <dt class="text-gray-500">Total cuota</dt>
+            <dd id="inst-total" class="font-bold text-brand-navy tabular-nums">—</dd>
+          </div>
+          <div id="row-mora" class="flex justify-between px-5 py-2.5 hidden">
+            <dt class="text-gray-500">⚠️ Mora pendiente</dt>
+            <dd id="inst-mora" class="font-medium text-red-600 tabular-nums">—</dd>
+          </div>
+          <div class="flex justify-between px-5 py-2.5">
+            <dt class="text-gray-500">Saldo total préstamo</dt>
+            <dd id="inst-outstanding" class="font-semibold text-gray-800 tabular-nums">—</dd>
+          </div>
+        </dl>
+      </div>
+
+      <!-- Desglose del pago (se recalcula al tipear el monto) -->
+      <div id="panel-split"
+           class="bg-white rounded-xl border-2 border-brand-green shadow-sm overflow-hidden hidden">
+        <div class="px-5 py-3 border-b border-gray-100 flex items-center justify-between">
+          <h2 class="text-sm font-semibold text-brand-navy uppercase tracking-wide">
+            🔢 Desglose del Pago
+          </h2>
+          <!-- Tipo de pago detectado -->
+          <span id="payment-type-badge"
+                class="text-xs font-semibold px-2.5 py-1 rounded-full bg-gray-100 text-gray-600">
+            —
+          </span>
+        </div>
+        <dl class="divide-y divide-gray-50 text-sm">
+          <div id="row-split-mora" class="flex justify-between px-5 py-2.5 hidden">
+            <dt class="text-gray-500">→ Mora cubierta</dt>
+            <dd id="split-mora" class="font-medium text-red-600 tabular-nums">—</dd>
+          </div>
+          <div class="flex justify-between px-5 py-2.5">
+            <dt class="text-gray-500">→ Interés aplicado</dt>
+            <dd id="split-interest" class="font-medium text-blue-600 tabular-nums">—</dd>
+          </div>
+          <div class="flex justify-between px-5 py-2.5">
+            <dt class="text-gray-500">→ Capital aplicado</dt>
+            <dd id="split-principal" class="font-medium text-gray-800 tabular-nums">—</dd>
+          </div>
+          <div id="row-split-excess" class="flex justify-between px-5 py-2.5 hidden">
+            <dt class="text-gray-500">→ Abono a capital</dt>
+            <dd id="split-excess" class="font-medium text-purple-600 tabular-nums">—</dd>
+          </div>
+        </dl>
+
+        <!-- Descripción del efecto del pago -->
+        <div id="payment-effect" class="px-5 py-3 bg-gray-50 border-t border-gray-100">
+          <p id="effect-text" class="text-xs text-gray-600 leading-relaxed">—</p>
+        </div>
+      </div>
+
+      <!-- Estado vacío: no hay cuota pendiente -->
+      <div id="panel-no-installment"
+           class="bg-amber-50 border border-amber-200 rounded-xl px-5 py-4 hidden">
+        <p class="text-sm font-medium text-amber-800">
+          ✅ Este préstamo no tiene cuotas pendientes.
+        </p>
+      </div>
+
+      <!-- Instrucción inicial -->
+      <div id="panel-placeholder"
+           class="bg-gray-50 border border-dashed border-gray-200 rounded-xl px-5 py-8 text-center">
+        <p class="text-sm text-gray-400">
+          Selecciona un préstamo para ver<br>el desglose de la cuota pendiente.
+        </p>
+      </div>
+
     </div>
 
-  </form>
+  </div>
 
 </div>
 
+<!-- =========================================
+     JAVASCRIPT — Desglose predictivo
+     Calcula mora → interés → capital → exceso
+     en el navegador, sin roundtrips extra.
+========================================= -->
+<script>
+(function () {
+  'use strict';
+
+  // ── Helpers de formato ──────────────────────────────────────────────────────
+  const COP = (n) =>
+    new Intl.NumberFormat('es-CO', {
+      style: 'currency',
+      currency: 'COP',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(n);
+
+  const fmt = (n) => COP(parseFloat(n) || 0);
+  const parseNum = (v) => parseFloat(v) || 0;
+
+  // ── Estado del préstamo seleccionado ────────────────────────────────────────
+  let loanData = null; // Respuesta de GET /admin/api/loans/:id/next-installment
+
+  // ── Referencias DOM ─────────────────────────────────────────────────────────
+  const selectLoan        = document.getElementById('loanId');
+  const inputAmount       = document.getElementById('amountPaid');
+  const btnExact          = document.getElementById('btn-exact');
+  const btnInterest       = document.getElementById('btn-interest');
+  const btnPayoff         = document.getElementById('btn-payoff');
+  const quickAmounts      = document.getElementById('quick-amounts');
+
+  const panelInstallment  = document.getElementById('panel-installment');
+  const panelSplit        = document.getElementById('panel-split');
+  const panelNoInstall    = document.getElementById('panel-no-installment');
+  const panelPlaceholder  = document.getElementById('panel-placeholder');
+
+  // Cuota pendiente
+  const instNumber      = document.getElementById('inst-number');
+  const instDueDate     = document.getElementById('inst-due-date');
+  const instInterest    = document.getElementById('inst-interest');
+  const instPrincipal   = document.getElementById('inst-principal');
+  const instTotal       = document.getElementById('inst-total');
+  const instMora        = document.getElementById('inst-mora');
+  const rowMora         = document.getElementById('row-mora');
+  const instOutstanding = document.getElementById('inst-outstanding');
+
+  // Desglose
+  const typeBadge       = document.getElementById('payment-type-badge');
+  const splitMora       = document.getElementById('split-mora');
+  const splitInterest   = document.getElementById('split-interest');
+  const splitPrincipal  = document.getElementById('split-principal');
+  const splitExcess     = document.getElementById('split-excess');
+  const rowSplitMora    = document.getElementById('row-split-mora');
+  const rowSplitExcess  = document.getElementById('row-split-excess');
+  const effectText      = document.getElementById('effect-text');
+
+  // ── Paneles ────────────────────────────────────────────────────────────────
+  function showOnly(...visible) {
+    [panelInstallment, panelSplit, panelNoInstall, panelPlaceholder]
+      .forEach((el) => el.classList.add('hidden'));
+    visible.forEach((el) => el.classList.remove('hidden'));
+  }
+
+  // ── Desglose del pago (replica engine payment-split.js en JS puro) ─────────
+  function calcSplit(amount, mora, interest, principal) {
+    const moraApplied     = Math.min(amount, mora);
+    const r1              = amount - moraApplied;
+    const interestApplied = Math.min(r1, interest);
+    const r2              = r1 - interestApplied;
+    const principalApplied = Math.min(r2, principal);
+    const excess          = r2 - principalApplied;
+    return { moraApplied, interestApplied, principalApplied, excess };
+  }
+
+  function classifyPayment(split, interest, principal, outstanding) {
+    if (split.interestApplied < interest - 0.01)     return 'PARTIAL_INTEREST';
+    const totalApplied =
+      split.interestApplied + split.principalApplied + split.excess;
+    if (totalApplied >= outstanding - 0.01)           return 'PAYOFF';
+    if (split.principalApplied < principal - 0.01)    return 'INTEREST_ONLY';
+    if (split.excess > 0.01)                          return 'OVERPAYMENT';
+    return 'FULL';
+  }
+
+  // Mapa de tipo de pago → badge + descripción del efecto financiero
+  const TYPE_INFO = {
+    PARTIAL_INTEREST: {
+      label : '⚠️ Parcial',
+      badge : 'bg-orange-100 text-orange-700',
+      effect: 'El monto no cubre el interés completo. La cuota queda pendiente y el capital no se toca.',
+    },
+    INTEREST_ONLY: {
+      label : '📌 Solo interés',
+      badge : 'bg-blue-100 text-blue-700',
+      effect: 'Cubre solo el interés. La cuota se marca pagada, pero el capital queda intacto y se agrega una nueva cuota al final del cronograma.',
+    },
+    FULL: {
+      label : '✅ Cuota completa',
+      badge : 'bg-green-100 text-green-700',
+      effect: 'Pago exacto. La cuota queda pagada y el cronograma no cambia.',
+    },
+    OVERPAYMENT: {
+      label : '🚀 Abono anticipado',
+      badge : 'bg-purple-100 text-purple-700',
+      effect: 'El excedente abona directamente a capital. El cronograma se recalcula y las cuotas restantes bajan de monto.',
+    },
+    PAYOFF: {
+      label : '🎉 Liquidación total',
+      badge : 'bg-teal-100 text-teal-700',
+      effect: 'El pago cubre todo el saldo pendiente. El préstamo queda COMPLETADO y las cuotas restantes se cancelan.',
+    },
+  };
+
+  // ── Actualizar panel de desglose ────────────────────────────────────────────
+  function updateSplit() {
+    if (!loanData || !loanData.nextSchedule) return;
+
+    const amount = parseNum(inputAmount.value);
+    if (amount <= 0) {
+      panelSplit.classList.add('hidden');
+      return;
+    }
+
+    const mora        = parseNum(loanData.moraAmount);
+    const interest    = parseNum(loanData.nextSchedule.interestDue);
+    const principal   = parseNum(loanData.nextSchedule.principalDue);
+    const outstanding = parseNum(loanData.outstandingBalance);
+
+    const split = calcSplit(amount, mora, interest, principal);
+    const type  = classifyPayment(split, interest, principal, outstanding);
+    const info  = TYPE_INFO[type] || { label: type, badge: 'bg-gray-100 text-gray-600', effect: '' };
+
+    // Badge de tipo
+    typeBadge.textContent = info.label;
+    typeBadge.className   = `text-xs font-semibold px-2.5 py-1 rounded-full ${info.badge}`;
+
+    // Mora
+    if (split.moraApplied > 0.005) {
+      splitMora.textContent = fmt(split.moraApplied);
+      rowSplitMora.classList.remove('hidden');
+    } else {
+      rowSplitMora.classList.add('hidden');
+    }
+
+    splitInterest.textContent  = fmt(split.interestApplied);
+    splitPrincipal.textContent = fmt(split.principalApplied);
+
+    // Exceso
+    if (split.excess > 0.005) {
+      splitExcess.textContent = fmt(split.excess);
+      rowSplitExcess.classList.remove('hidden');
+    } else {
+      rowSplitExcess.classList.add('hidden');
+    }
+
+    effectText.textContent = info.effect;
+    panelSplit.classList.remove('hidden');
+  }
+
+  // ── Cargar datos del préstamo via API ───────────────────────────────────────
+  async function loadLoan(loanId) {
+    loanData = null;
+    quickAmounts.classList.add('hidden');
+    showOnly(panelPlaceholder);
+
+    try {
+      const res  = await fetch(`/admin/api/loans/${loanId}/next-installment`);
+      const json = await res.json();
+
+      if (!res.ok || !json.data) {
+        showOnly(panelPlaceholder);
+        return;
+      }
+
+      loanData = json.data;
+
+      if (!loanData.nextSchedule) {
+        // Sin cuotas pendientes
+        showOnly(panelNoInstall);
+        return;
+      }
+
+      // Rellenar panel de cuota pendiente
+      const s = loanData.nextSchedule;
+      const dueDateFormatted = new Date(s.dueDate).toLocaleDateString('es-CO', {
+        day  : '2-digit',
+        month: '2-digit',
+        year : 'numeric',
+        timeZone: 'UTC',
+      });
+
+      instNumber.textContent      = s.installmentNumber;
+      instDueDate.textContent     = dueDateFormatted;
+      instInterest.textContent    = fmt(s.interestDue);
+      instPrincipal.textContent   = fmt(s.principalDue);
+      instTotal.textContent       = fmt(s.amountDue);
+      instOutstanding.textContent = fmt(loanData.outstandingBalance);
+
+      const mora = parseNum(loanData.moraAmount);
+      if (mora > 0.005) {
+        instMora.textContent = fmt(mora);
+        rowMora.classList.remove('hidden');
+      } else {
+        rowMora.classList.add('hidden');
+      }
+
+      // Configurar botones de acceso rápido
+      btnExact.dataset.value    = parseNum(s.amountDue) + mora;
+      btnInterest.dataset.value = parseNum(s.interestDue) + mora;
+      btnPayoff.dataset.value   = parseNum(loanData.outstandingBalance) + mora;
+
+      quickAmounts.classList.remove('hidden');
+
+      showOnly(panelInstallment);
+      updateSplit(); // recalcular si ya hay monto ingresado
+
+    } catch {
+      // Error de red: mantener el placeholder
+      showOnly(panelPlaceholder);
+    }
+  }
+
+  // ── Event listeners ─────────────────────────────────────────────────────────
+  selectLoan.addEventListener('change', () => {
+    const id = selectLoan.value;
+    if (id) {
+      loadLoan(id);
+    } else {
+      loanData = null;
+      quickAmounts.classList.add('hidden');
+      showOnly(panelPlaceholder);
+    }
+  });
+
+  inputAmount.addEventListener('input', updateSplit);
+
+  [btnExact, btnInterest, btnPayoff].forEach((btn) => {
+    btn.addEventListener('click', () => {
+      inputAmount.value = Math.round(parseNum(btn.dataset.value));
+      updateSplit();
+      inputAmount.focus();
+    });
+  });
+
+})();
+</script>
+
 <%- include('../../layouts/footer') %>
+
