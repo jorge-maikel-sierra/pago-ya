@@ -91,10 +91,8 @@ const initTelegramBot = ({ token, webhookUrl, isProduction = false }) => {
   if (isProduction && webhookUrl) {
     bot = new TelegramBot(token, { webHook: { port: false } });
     bot.setWebHook(`${webhookUrl}/api/telegram/webhook`);
-    console.log(`[Telegram] Bot iniciado en modo webhook: ${webhookUrl}/api/telegram/webhook`);
   } else {
     bot = new TelegramBot(token, { polling: true });
-    console.log('[Telegram] Bot iniciado en modo polling (desarrollo)');
   }
 
   registerCommands(bot);

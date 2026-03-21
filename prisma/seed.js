@@ -53,8 +53,6 @@ const buildSchedule = ({ loanId, totalAmount, principalAmount, numberOfPayments,
 };
 
 const seed = async () => {
-  console.log('🌱 Iniciando seed...');
-
   // --- Limpiar datos existentes (orden por FK) ---
   await prisma.gpsLocation.deleteMany();
   await prisma.incident.deleteMany();
@@ -65,7 +63,6 @@ const seed = async () => {
   await prisma.route.deleteMany();
   await prisma.user.deleteMany();
   await prisma.organization.deleteMany();
-  console.log('  ✓ Datos anteriores eliminados');
 
   // ============================================
   // 1. ORGANIZACIÓN
@@ -80,8 +77,6 @@ const seed = async () => {
       isActive: true,
     },
   });
-  console.log(`  ✓ Organización: ${org.name} (${org.id})`);
-
   // ============================================
   // 2. USUARIOS
   // ============================================
@@ -140,15 +135,6 @@ const seed = async () => {
     },
   });
 
-  console.log('  ✓ Usuarios creados:');
-  // Imprimir credenciales solo en development — nunca en producción ni CI/CD público
-  if (process.env.NODE_ENV !== 'production') {
-    console.log('    SUPER_ADMIN: jorge@elpaisa.com / (ver SEED_ADMIN_PASSWORD)');
-    console.log('    ADMIN:       maria@elpaisa.com / (ver SEED_ADMIN_PASSWORD)');
-    console.log('    COLLECTOR:   carlos@elpaisa.com / (ver SEED_COLLECTOR_PASSWORD)');
-    console.log('    COLLECTOR:   andres@elpaisa.com / (ver SEED_COLLECTOR_PASSWORD)');
-  }
-
   // ============================================
   // 3. RUTAS
   // ============================================
@@ -171,7 +157,6 @@ const seed = async () => {
       isActive: true,
     },
   });
-  console.log('  ✓ Rutas: Ruta Centro, Ruta Envigado');
 
   // ============================================
   // 4. CLIENTES
@@ -244,7 +229,6 @@ const seed = async () => {
     });
     clients.push(client);
   }
-  console.log(`  ✓ ${clients.length} clientes creados`);
 
   // ============================================
   // 5. PRÉSTAMOS + CRONOGRAMA
@@ -367,26 +351,12 @@ const seed = async () => {
         },
       });
     }
-
-    console.log(
-      `  ✓ Préstamo: ${cfg.client.firstName} ${cfg.client.lastName}`
-      + ` — $${principal.toFixed(0)} (${cfg.paidInstallments}/${cfg.payments} cuotas pagadas)`,
-    );
   }
 
   // ============================================
   // RESUMEN
   // ============================================
-  console.log('\n✅ Seed completado exitosamente');
   // Solo mostrar credenciales fuera de producción para evitar leaks en logs de CI/CD
-  if (process.env.NODE_ENV !== 'production') {
-    console.log('\n📋 Credenciales de acceso al panel admin:');
-    console.log('─'.repeat(45));
-    console.log('  SUPER_ADMIN: jorge@elpaisa.com / (valor de SEED_ADMIN_PASSWORD)');
-    console.log('  ADMIN:       maria@elpaisa.com / (valor de SEED_ADMIN_PASSWORD)');
-    console.log('─'.repeat(45));
-    console.log('\n🌐 URL: http://localhost:3000/admin/login\n');
-  }
 };
 
 seed()

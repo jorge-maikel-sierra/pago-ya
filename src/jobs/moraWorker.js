@@ -24,15 +24,7 @@ const startMoraWorker = () => {
         throw new Error('El job de mora requiere organizationId en job.data');
       }
 
-      console.log(`[MoraWorker] Iniciando cálculo de mora para org ${organizationId}`);
-
       const result = await processMoraForOrganization(organizationId);
-
-      console.log(
-        `[MoraWorker] Org ${organizationId} — ` +
-          `procesados: ${result.processed}, errores: ${result.errors}, ` +
-          `mora total: $${result.totalMora}`,
-      );
 
       return result;
     },

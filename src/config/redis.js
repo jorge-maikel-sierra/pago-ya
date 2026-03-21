@@ -41,7 +41,6 @@ if (process.env.NODE_ENV === 'test') {
   // console.info('[Redis] Deshabilitado en entorno de test');
 } else if (redisClient) {
   redisClient.on('connect', () => {
-    console.log('[Redis] Conectado exitosamente');
   });
 
   redisClient.on('error', (err) => {
