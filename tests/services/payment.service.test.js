@@ -1,318 +1,242 @@
 import { jest, describe, it, expect, beforeEach } from '@jest/globals';
 
-// --- Mocks ---
-const mockFindUnique = jest.fn();
-const mockFindFirst = jest.fn();
-const mockCreate = jest.fn();
-const mockUpdate = jest.fn();
-const mockCount = jest.fn();
+// ── Mocks ─────────────────────────────────────────────────────────────────────
 const mockTransaction = jest.fn();
 
 jest.unstable_mockModule('../../src/config/prisma.js', () => ({
-  default: {
-    loan: { findUnique: mockFindUnique, update: mockUpdate },
-    paymentSchedule: {
-      findUnique: mockFindUnique,
-      findFirst: mockFindFirst,
-      update: mockUpdate,
-      count: mockCount,
-    },
-    payment: { create: mockCreate },
-    $transaction: mockTransaction,
-  },
+  default: { $transaction: mockTransaction },
 }));
 
 const { processPayment, registerPayment, batchSync, registerAdminPayment } = await import(
   '../../src/services/payment.service.js'
 );
 
-// --- Fixtures ---
+// ── Fixtures ──────────────────────────────────────────────────────────────────
 const LOAN_ID = '550e8400-e29b-41d4-a716-446655440000';
 const COLLECTOR_ID = '660e8400-e29b-41d4-a716-446655440000';
 const SCHEDULE_ID = '770e8400-e29b-41d4-a716-446655440000';
 const PAYMENT_ID = '880e8400-e29b-41d4-a716-446655440000';
 
+/**
+ * Préstamo base: 5 cuotas de 30 000 c/u (20 000 capital + 10 000 interés).
+ * totalAmount = 150 000, principalAmount = 100 000
+ */
 const baseLoan = {
   id: LOAN_ID,
   status: 'ACTIVE',
   totalPaid: '0.00',
-  totalAmount: '500000.00',
-  outstandingBalance: '500000.00',
+  totalAmount: '150000.00',
+  principalAmount: '100000.00',
+  outstandingBalance: '150000.00',
   paidPayments: 0,
-  numberOfPayments: 20,
+  numberOfPayments: 5,
+  installmentAmount: '30000.00',
+  moraAmount: '0.00',
+  interestPaid: '0.00',
+  paymentFrequency: 'MONTHLY',
   client: { firstName: 'Juan', lastName: 'Pérez', phone: '3001234567' },
 };
 
+/** Cuota base: 30 000 total = 20 000 capital + 10 000 interés */
 const baseSchedule = {
   id: SCHEDULE_ID,
   loanId: LOAN_ID,
-  amountDue: '25000.00',
+  installmentNumber: 1,
+  dueDate: new Date('2026-02-01'),
+  amountDue: '30000.00',
   amountPaid: '0.00',
+  principalDue: '20000.00',
+  interestDue: '10000.00',
   isPaid: false,
+  isRestructured: false,
 };
+
+/** Construye un tx mock con todos los métodos requeridos por processPayment */
+const makeDb = (overrides = {}) => ({
+  loan: {
+    findUnique: jest.fn().mockResolvedValue(baseLoan),
+    update: jest.fn().mockResolvedValue(baseLoan),
+    ...overrides.loan,
+  },
+  paymentSchedule: {
+    findFirst: jest.fn().mockResolvedValue(baseSchedule),
+    findUnique: jest.fn().mockResolvedValue(baseSchedule),
+    findMany: jest.fn().mockResolvedValue([]),
+    create: jest.fn().mockResolvedValue({}),
+    createMany: jest.fn().mockResolvedValue({ count: 0 }),
+    update: jest.fn().mockResolvedValue(baseSchedule),
+    updateMany: jest.fn().mockResolvedValue({ count: 0 }),
+    ...overrides.paymentSchedule,
+  },
+  payment: {
+    create: jest.fn().mockResolvedValue({ id: PAYMENT_ID, amount: '30000.00' }),
+    ...overrides.payment,
+  },
+});
 
 const baseInput = {
   loanId: LOAN_ID,
-  amountPaid: 25000,
+  amountPaid: 30000,
   offlineCreatedAt: '2026-02-22T14:30:00.000Z',
   collectorId: COLLECTOR_ID,
 };
 
+// ── processPayment ─────────────────────────────────────────────────────────────
 describe('processPayment', () => {
-  let mockDb;
+  let db;
 
   beforeEach(() => {
     jest.clearAllMocks();
-
-    mockDb = {
-      loan: { findUnique: jest.fn(), update: jest.fn() },
-      paymentSchedule: {
-        findUnique: jest.fn(),
-        findFirst: jest.fn(),
-        update: jest.fn(),
-        count: jest.fn(),
-      },
-      payment: { create: jest.fn() },
-    };
+    db = makeDb();
   });
 
-  it('registra un pago correctamente con cuota automática', async () => {
-    mockDb.loan.findUnique.mockResolvedValue(baseLoan);
-    mockDb.paymentSchedule.findFirst.mockResolvedValue(baseSchedule);
-    mockDb.payment.create.mockResolvedValue({
-      id: PAYMENT_ID,
-      amount: '25000.00',
-      moraAmount: '0.00',
-      totalReceived: '25000.00',
-      collectedAt: new Date('2026-02-22T14:30:00.000Z'),
-    });
-    mockDb.paymentSchedule.update.mockResolvedValue({
-      ...baseSchedule,
-      amountPaid: '25000.00',
-      isPaid: true,
-    });
-    mockDb.paymentSchedule.count.mockResolvedValue(1);
-    mockDb.loan.update.mockResolvedValue({
-      ...baseLoan,
-      totalPaid: '25000.00',
-      outstandingBalance: '475000.00',
-      paidPayments: 1,
-      status: 'ACTIVE',
-    });
-
-    const result = await processPayment(baseInput, mockDb);
-
-    expect(result.payment.id).toBe(PAYMENT_ID);
-    expect(result.loan.totalPaid).toBe('25000.00');
-    expect(result.clientName).toBe('Juan Pérez');
-    expect(mockDb.payment.create).toHaveBeenCalledTimes(1);
-    expect(mockDb.paymentSchedule.update).toHaveBeenCalledTimes(1);
-    expect(mockDb.loan.update).toHaveBeenCalledTimes(1);
+  // ── Validaciones ─────────────────────────────────────────────────────────────
+  it('lanza 404 si el préstamo no existe', async () => {
+    db.loan.findUnique.mockResolvedValue(null);
+    await expect(processPayment(baseInput, db)).rejects.toMatchObject({ statusCode: 404 });
   });
 
-  it('registra un pago con paymentScheduleId explícito', async () => {
-    mockDb.loan.findUnique.mockResolvedValue(baseLoan);
-    mockDb.paymentSchedule.findUnique.mockResolvedValue(baseSchedule);
-    mockDb.payment.create.mockResolvedValue({
-      id: PAYMENT_ID,
-      amount: '25000.00',
-      moraAmount: '0.00',
-      totalReceived: '25000.00',
-      collectedAt: new Date(),
-    });
-    mockDb.paymentSchedule.update.mockResolvedValue({
-      ...baseSchedule,
-      amountPaid: '25000.00',
-      isPaid: true,
-    });
-    mockDb.paymentSchedule.count.mockResolvedValue(1);
-    mockDb.loan.update.mockResolvedValue({
+  it('lanza 409 si el préstamo no está activo', async () => {
+    db.loan.findUnique.mockResolvedValue({ ...baseLoan, status: 'COMPLETED' });
+    await expect(processPayment(baseInput, db)).rejects.toMatchObject({ statusCode: 409 });
+  });
+
+  it('lanza 404 si paymentScheduleId no existe', async () => {
+    db.paymentSchedule.findUnique.mockResolvedValue(null);
+    await expect(
+      processPayment({ ...baseInput, paymentScheduleId: SCHEDULE_ID }, db),
+    ).rejects.toMatchObject({ statusCode: 404 });
+  });
+
+  it('lanza 404 si paymentScheduleId pertenece a otro préstamo', async () => {
+    db.paymentSchedule.findUnique.mockResolvedValue({ ...baseSchedule, loanId: 'otro-id' });
+    await expect(
+      processPayment({ ...baseInput, paymentScheduleId: SCHEDULE_ID }, db),
+    ).rejects.toMatchObject({ statusCode: 404 });
+  });
+
+  // ── FULL: pago exacto ────────────────────────────────────────────────────────
+  it('FULL — cuota exacta: marca isPaid y actualiza outstandingBalance', async () => {
+    db.loan.update.mockResolvedValue({
       ...baseLoan,
-      totalPaid: '25000.00',
-      outstandingBalance: '475000.00',
+      outstandingBalance: '120000.00',
       paidPayments: 1,
     });
 
-    const result = await processPayment({ ...baseInput, paymentScheduleId: SCHEDULE_ID }, mockDb);
+    const result = await processPayment(baseInput, db);
 
-    expect(result.payment.id).toBe(PAYMENT_ID);
-    expect(mockDb.paymentSchedule.findUnique).toHaveBeenCalledWith({ where: { id: SCHEDULE_ID } });
+    expect(result.paymentType).toBe('FULL');
+    const schedUpdate = db.paymentSchedule.update.mock.calls[0][0];
+    expect(schedUpdate.data.isPaid).toBe(true);
+    const loanUpdate = db.loan.update.mock.calls[0][0];
+    expect(loanUpdate.data.paidPayments).toEqual({ increment: 1 });
   });
 
-  it('lanza error 404 si el préstamo no existe', async () => {
-    mockDb.loan.findUnique.mockResolvedValue(undefined);
+  // ── PARTIAL_INTEREST ─────────────────────────────────────────────────────────
+  it('PARTIAL_INTEREST — cuota sigue pendiente (isPaid=false)', async () => {
+    db.loan.update.mockResolvedValue(baseLoan);
 
-    await expect(processPayment(baseInput, mockDb)).rejects.toThrow('Préstamo no encontrado');
+    const result = await processPayment({ ...baseInput, amountPaid: 5000 }, db);
+
+    expect(result.paymentType).toBe('PARTIAL_INTEREST');
+    // PARTIAL_INTEREST solo acumula amountPaid; no toca isPaid
+    expect(db.paymentSchedule.update).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.not.objectContaining({ isPaid: true }) }),
+    );
   });
 
-  it('lanza error 409 si el préstamo no está activo', async () => {
-    mockDb.loan.findUnique.mockResolvedValue({ ...baseLoan, status: 'COMPLETED' });
+  // ── INTEREST_ONLY ─────────────────────────────────────────────────────────────
+  it('INTEREST_ONLY — extiende cronograma con nueva cuota', async () => {
+    // primera llamada: cuota pendiente; segunda: última cuota del préstamo
+    db.paymentSchedule.findFirst
+      .mockResolvedValueOnce(baseSchedule)
+      .mockResolvedValueOnce({ ...baseSchedule, installmentNumber: 5 });
+    db.loan.update.mockResolvedValue({ ...baseLoan, numberOfPayments: 6, paidPayments: 1 });
 
-    await expect(processPayment(baseInput, mockDb)).rejects.toThrow('no está activo');
+    const result = await processPayment({ ...baseInput, amountPaid: 10000 }, db);
+
+    expect(result.paymentType).toBe('INTEREST_ONLY');
+    expect(db.paymentSchedule.create).toHaveBeenCalledTimes(1);
+    const newSched = db.paymentSchedule.create.mock.calls[0][0].data;
+    expect(newSched.installmentNumber).toBe(6);
+    const loanUpdate = db.loan.update.mock.calls[0][0];
+    expect(loanUpdate.data.numberOfPayments).toEqual({ increment: 1 });
   });
 
-  it('lanza error 404 si paymentScheduleId no pertenece al préstamo', async () => {
-    mockDb.loan.findUnique.mockResolvedValue(baseLoan);
-    mockDb.paymentSchedule.findUnique.mockResolvedValue({
+  // ── OVERPAYMENT ───────────────────────────────────────────────────────────────
+  it('OVERPAYMENT — restructura cuotas pendientes', async () => {
+    const pending = [2, 3, 4, 5].map((n) => ({
       ...baseSchedule,
-      loanId: 'otro-loan-id',
-    });
+      id: `sched-${n}`,
+      installmentNumber: n,
+      dueDate: new Date(`2026-0${n}-01`),
+    }));
+    db.paymentSchedule.findMany.mockResolvedValue(pending);
+    db.loan.update.mockResolvedValue({ ...baseLoan, outstandingBalance: '90000.00' });
 
-    await expect(
-      processPayment({ ...baseInput, paymentScheduleId: SCHEDULE_ID }, mockDb),
-    ).rejects.toThrow('Cuota del cronograma no encontrada');
+    const result = await processPayment({ ...baseInput, amountPaid: 60000 }, db);
+
+    expect(result.paymentType).toBe('OVERPAYMENT');
+    expect(db.paymentSchedule.updateMany).toHaveBeenCalledTimes(1);
+    expect(db.paymentSchedule.updateMany.mock.calls[0][0].data.isRestructured).toBe(true);
+    expect(db.paymentSchedule.createMany).toHaveBeenCalledTimes(1);
   });
 
-  it('lanza error 404 si paymentScheduleId no existe', async () => {
-    mockDb.loan.findUnique.mockResolvedValue(baseLoan);
-    mockDb.paymentSchedule.findUnique.mockResolvedValue(undefined);
-
-    await expect(
-      processPayment({ ...baseInput, paymentScheduleId: SCHEDULE_ID }, mockDb),
-    ).rejects.toThrow('Cuota del cronograma no encontrada');
-  });
-
-  it('registra pago sin cuota disponible (schedule = undefined)', async () => {
-    mockDb.loan.findUnique.mockResolvedValue(baseLoan);
-    mockDb.paymentSchedule.findFirst.mockResolvedValue(undefined);
-    mockDb.payment.create.mockResolvedValue({
-      id: PAYMENT_ID,
-      amount: '25000.00',
-      moraAmount: '0.00',
-      totalReceived: '25000.00',
-      collectedAt: new Date(),
-    });
-    mockDb.paymentSchedule.count.mockResolvedValue(0);
-    mockDb.loan.update.mockResolvedValue({
+  // ── PAYOFF ────────────────────────────────────────────────────────────────────
+  it('PAYOFF — préstamo queda COMPLETED y balance en 0', async () => {
+    db.loan.findUnique.mockResolvedValue({
       ...baseLoan,
-      totalPaid: '25000.00',
-      outstandingBalance: '475000.00',
+      outstandingBalance: '30000.00',
+      totalPaid: '120000.00',
     });
-
-    const result = await processPayment(baseInput, mockDb);
-
-    expect(result.payment.id).toBe(PAYMENT_ID);
-    expect(result.schedule).toBeUndefined();
-  });
-
-  it('marca cuota como parcialmente pagada si monto es menor al due', async () => {
-    mockDb.loan.findUnique.mockResolvedValue(baseLoan);
-    mockDb.paymentSchedule.findFirst.mockResolvedValue(baseSchedule);
-    mockDb.payment.create.mockResolvedValue({
-      id: PAYMENT_ID,
-      amount: '10000.00',
-      moraAmount: '0.00',
-      totalReceived: '10000.00',
-      collectedAt: new Date(),
-    });
-    mockDb.paymentSchedule.update.mockResolvedValue({
-      ...baseSchedule,
-      amountPaid: '10000.00',
-      isPaid: false,
-    });
-    mockDb.paymentSchedule.count.mockResolvedValue(0);
-    mockDb.loan.update.mockResolvedValue({
+    db.loan.update.mockResolvedValue({
       ...baseLoan,
-      totalPaid: '10000.00',
-      outstandingBalance: '490000.00',
-    });
-
-    const result = await processPayment({ ...baseInput, amountPaid: 10000 }, mockDb);
-
-    const updateCall = mockDb.paymentSchedule.update.mock.calls[0][0];
-    expect(updateCall.data.isPaid).toBe(false);
-    expect(result.schedule.isPaid).toBe(false);
-  });
-
-  it('cambia estado del préstamo a COMPLETED cuando se paga todo', async () => {
-    const almostPaidLoan = { ...baseLoan, totalPaid: '475000.00', totalAmount: '500000.00' };
-    mockDb.loan.findUnique.mockResolvedValue(almostPaidLoan);
-    mockDb.paymentSchedule.findFirst.mockResolvedValue(baseSchedule);
-    mockDb.payment.create.mockResolvedValue({
-      id: PAYMENT_ID,
-      amount: '25000.00',
-      moraAmount: '0.00',
-      totalReceived: '25000.00',
-      collectedAt: new Date(),
-    });
-    mockDb.paymentSchedule.update.mockResolvedValue({
-      ...baseSchedule,
-      amountPaid: '25000.00',
-      isPaid: true,
-    });
-    mockDb.paymentSchedule.count.mockResolvedValue(20);
-    mockDb.loan.update.mockResolvedValue({
-      ...almostPaidLoan,
-      totalPaid: '500000.00',
       outstandingBalance: '0.00',
       status: 'COMPLETED',
     });
 
-    await processPayment(baseInput, mockDb);
+    const result = await processPayment(baseInput, db);
 
-    const loanUpdateCall = mockDb.loan.update.mock.calls[0][0];
-    expect(loanUpdateCall.data.status).toBe('COMPLETED');
-    expect(loanUpdateCall.data.actualEndDate).toBeDefined();
+    expect(result.paymentType).toBe('PAYOFF');
+    const loanUpdate = db.loan.update.mock.calls[0][0];
+    expect(loanUpdate.data.status).toBe('COMPLETED');
+    expect(loanUpdate.data.outstandingBalance).toBe('0.00');
+    expect(db.paymentSchedule.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({ data: { isRestructured: true } }),
+    );
   });
 
-  it('incluye latitude y longitude en el pago creado', async () => {
-    mockDb.loan.findUnique.mockResolvedValue(baseLoan);
-    mockDb.paymentSchedule.findFirst.mockResolvedValue(baseSchedule);
-    mockDb.payment.create.mockResolvedValue({
-      id: PAYMENT_ID,
-      amount: '25000.00',
-      moraAmount: '0.00',
-      totalReceived: '25000.00',
-      collectedAt: new Date(),
-    });
-    mockDb.paymentSchedule.update.mockResolvedValue({
-      ...baseSchedule,
-      amountPaid: '25000.00',
-      isPaid: true,
-    });
-    mockDb.paymentSchedule.count.mockResolvedValue(1);
-    mockDb.loan.update.mockResolvedValue({
-      ...baseLoan,
-      totalPaid: '25000.00',
-      outstandingBalance: '475000.00',
-    });
-
-    await processPayment({ ...baseInput, latitude: 4.609, longitude: -74.081 }, mockDb);
-
-    const createCall = mockDb.payment.create.mock.calls[0][0];
+  // ── Opcionales ────────────────────────────────────────────────────────────────
+  it('incluye coordenadas GPS en el pago creado', async () => {
+    db.loan.update.mockResolvedValue(baseLoan);
+    await processPayment({ ...baseInput, latitude: 4.609, longitude: -74.081 }, db);
+    const createCall = db.payment.create.mock.calls[0][0];
     expect(createCall.data.latitude).toBe(4.609);
     expect(createCall.data.longitude).toBe(-74.081);
   });
-});
 
-describe('registerPayment', () => {
-  beforeEach(() => {
-    jest.clearAllMocks();
+  it('usa paymentScheduleId explícito cuando se provee', async () => {
+    db.loan.update.mockResolvedValue(baseLoan);
+    await processPayment({ ...baseInput, paymentScheduleId: SCHEDULE_ID }, db);
+    expect(db.paymentSchedule.findUnique).toHaveBeenCalledWith({ where: { id: SCHEDULE_ID } });
+    expect(db.paymentSchedule.findFirst).not.toHaveBeenCalled();
   });
 
+  it('retorna clientName compuesto desde loan.client', async () => {
+    db.loan.update.mockResolvedValue(baseLoan);
+    const result = await processPayment(baseInput, db);
+    expect(result.clientName).toBe('Juan Pérez');
+  });
+});
+
+// ── registerPayment ───────────────────────────────────────────────────────────
+describe('registerPayment', () => {
+  beforeEach(() => jest.clearAllMocks());
+
   it('ejecuta processPayment dentro de una transacción', async () => {
-    mockTransaction.mockImplementation(async (fn) =>
-      fn({
-        loan: {
-          findUnique: jest.fn().mockResolvedValue(baseLoan),
-          update: jest.fn().mockResolvedValue(baseLoan),
-        },
-        paymentSchedule: {
-          findFirst: jest.fn().mockResolvedValue(baseSchedule),
-          update: jest.fn().mockResolvedValue(baseSchedule),
-          count: jest.fn().mockResolvedValue(1),
-        },
-        payment: {
-          create: jest.fn().mockResolvedValue({
-            id: PAYMENT_ID,
-            amount: '25000.00',
-            moraAmount: '0.00',
-            totalReceived: '25000.00',
-            collectedAt: new Date(),
-          }),
-        },
-      }),
-    );
+    const db = makeDb();
+    db.loan.update.mockResolvedValue(baseLoan);
+    mockTransaction.mockImplementation((fn) => fn(db));
 
     const result = await registerPayment(baseInput);
 
@@ -322,15 +246,13 @@ describe('registerPayment', () => {
 
   it('propaga errores de la transacción', async () => {
     mockTransaction.mockRejectedValue(new Error('DB Error'));
-
     await expect(registerPayment(baseInput)).rejects.toThrow('DB Error');
   });
 });
 
+// ── batchSync ──────────────────────────────────────────────────────────────────
 describe('batchSync', () => {
-  beforeEach(() => {
-    jest.clearAllMocks();
-  });
+  beforeEach(() => jest.clearAllMocks());
 
   it('procesa múltiples pagos y retorna estado por cada uno', async () => {
     let callCount = 0;
@@ -341,73 +263,41 @@ describe('batchSync', () => {
         err.statusCode = 409;
         throw err;
       }
-      return fn({
-        loan: {
-          findUnique: jest.fn().mockResolvedValue(baseLoan),
-          update: jest.fn().mockResolvedValue(baseLoan),
-        },
-        paymentSchedule: {
-          findFirst: jest.fn().mockResolvedValue(baseSchedule),
-          update: jest.fn().mockResolvedValue(baseSchedule),
-          count: jest.fn().mockResolvedValue(1),
-        },
-        payment: {
-          create: jest.fn().mockResolvedValue({
-            id: `pay-${callCount}`,
-            amount: '25000.00',
-            moraAmount: '0.00',
-            totalReceived: '25000.00',
-            collectedAt: new Date(),
-          }),
-        },
-      });
+      const db = makeDb();
+      db.loan.update.mockResolvedValue(baseLoan);
+      return fn(db);
     });
 
-    const items = [
-      {
-        localId: 'local-1',
-        loanId: LOAN_ID,
-        amountPaid: 25000,
-        offlineCreatedAt: '2026-02-22T14:30:00.000Z',
-      },
-      {
-        localId: 'local-2',
-        loanId: LOAN_ID,
-        amountPaid: 25000,
-        offlineCreatedAt: '2026-02-22T14:31:00.000Z',
-      },
-      {
-        localId: 'local-3',
-        loanId: LOAN_ID,
-        amountPaid: 25000,
-        offlineCreatedAt: '2026-02-22T14:32:00.000Z',
-      },
-    ];
+    const items = [1, 2, 3].map((n) => ({
+      localId: `local-${n}`,
+      loanId: LOAN_ID,
+      amountPaid: 30000,
+      offlineCreatedAt: `2026-02-22T14:3${n}:00.000Z`,
+    }));
 
     const results = await batchSync(items, COLLECTOR_ID);
 
     expect(results).toHaveLength(3);
     expect(results[0].status).toBe('synced');
-    expect(results[0].paymentId).toBeDefined();
     expect(results[1].status).toBe('conflict');
-    expect(results[1].message).toBeDefined();
     expect(results[2].status).toBe('synced');
   });
 
   it('retorna conflict para errores P2002 (duplicado)', async () => {
-    const prismaErr = new Error('Unique constraint');
-    prismaErr.code = 'P2002';
-    mockTransaction.mockRejectedValue(prismaErr);
+    const err = Object.assign(new Error('Unique constraint'), { code: 'P2002' });
+    mockTransaction.mockRejectedValue(err);
 
-    const items = [
-      {
-        localId: 'local-1',
-        loanId: LOAN_ID,
-        amountPaid: 25000,
-        offlineCreatedAt: '2026-02-22T14:30:00.000Z',
-      },
-    ];
-    const results = await batchSync(items, COLLECTOR_ID);
+    const results = await batchSync(
+      [
+        {
+          localId: 'local-1',
+          loanId: LOAN_ID,
+          amountPaid: 30000,
+          offlineCreatedAt: '2026-02-22T14:30:00.000Z',
+        },
+      ],
+      COLLECTOR_ID,
+    );
 
     expect(results[0].status).toBe('conflict');
   });
@@ -415,154 +305,113 @@ describe('batchSync', () => {
   it('retorna error para errores genéricos', async () => {
     mockTransaction.mockRejectedValue(new Error('DB connection lost'));
 
-    const items = [
-      {
-        localId: 'local-1',
-        loanId: LOAN_ID,
-        amountPaid: 25000,
-        offlineCreatedAt: '2026-02-22T14:30:00.000Z',
-      },
-    ];
-    const results = await batchSync(items, COLLECTOR_ID);
+    const results = await batchSync(
+      [
+        {
+          localId: 'local-1',
+          loanId: LOAN_ID,
+          amountPaid: 30000,
+          offlineCreatedAt: '2026-02-22T14:30:00.000Z',
+        },
+      ],
+      COLLECTOR_ID,
+    );
 
     expect(results[0].status).toBe('error');
     expect(results[0].message).toBe('DB connection lost');
   });
 
   it('retorna array vacío si se pasa array vacío', async () => {
-    const results = await batchSync([], COLLECTOR_ID);
-    expect(results).toEqual([]);
+    expect(await batchSync([], COLLECTOR_ID)).toEqual([]);
   });
 });
 
-// ============================
-// registerAdminPayment
-// ============================
+// ── registerAdminPayment ───────────────────────────────────────────────────────
 describe('registerAdminPayment', () => {
   const adminInput = {
     loanId: LOAN_ID,
-    amountPaid: '25000',
+    amountPaid: '30000',
     paymentDate: '2026-05-01',
     collectorId: COLLECTOR_ID,
     paymentMethod: 'CASH',
     notes: 'Pago en efectivo',
   };
 
-  const makeTx = (overrides = {}) => ({
-    loan: {
-      findUnique: jest.fn().mockResolvedValue({
-        ...baseLoan,
-        moraAmount: '0.00',
-        paymentSchedule: [
-          { id: SCHEDULE_ID, amountDue: '25000.00', amountPaid: '0.00', installmentNumber: 1 },
-        ],
-        collector: { firstName: 'Col', lastName: 'Lector' },
-        ...overrides.loan,
-      }),
-      update: jest.fn().mockResolvedValue({ ...baseLoan, totalPaid: '25000.00' }),
-    },
-    paymentSchedule: {
-      update: jest.fn().mockResolvedValue(baseSchedule),
-    },
-    payment: {
-      create: jest.fn().mockResolvedValue({ id: PAYMENT_ID }),
-    },
-    ...overrides,
-  });
-
   beforeEach(() => jest.clearAllMocks());
 
-  it('registra pago admin correctamente sin mora', async () => {
-    const tx = makeTx();
-    mockTransaction.mockImplementation(async (fn) => fn(tx));
+  it('delega a processPayment mediante $transaction', async () => {
+    const db = makeDb();
+    db.loan.update.mockResolvedValue(baseLoan);
+    mockTransaction.mockImplementation((fn) => fn(db));
 
     const result = await registerAdminPayment(adminInput);
 
     expect(mockTransaction).toHaveBeenCalledTimes(1);
-    expect(tx.payment.create).toHaveBeenCalledTimes(1);
     expect(result.payment.id).toBe(PAYMENT_ID);
   });
 
-  it('lanza error 404 cuando el préstamo no existe', async () => {
-    const tx = {
-      loan: { findUnique: jest.fn().mockResolvedValue(null) },
-      paymentSchedule: { update: jest.fn() },
-      payment: { create: jest.fn() },
-    };
-    mockTransaction.mockImplementation(async (fn) => fn(tx));
+  it('lanza 404 cuando el préstamo no existe', async () => {
+    const db = makeDb({
+      loan: { findUnique: jest.fn().mockResolvedValue(null), update: jest.fn() },
+    });
+    mockTransaction.mockImplementation((fn) => fn(db));
 
     await expect(registerAdminPayment(adminInput)).rejects.toMatchObject({ statusCode: 404 });
   });
 
-  it('lanza error 409 cuando el préstamo no está activo', async () => {
-    const tx = makeTx();
-    tx.loan.findUnique.mockResolvedValue({
-      ...baseLoan,
-      status: 'COMPLETED',
-      moraAmount: '0.00',
-      paymentSchedule: [],
-      collector: { firstName: 'C', lastName: 'L' },
+  it('lanza 409 cuando el préstamo no está activo', async () => {
+    const db = makeDb({
+      loan: {
+        findUnique: jest.fn().mockResolvedValue({ ...baseLoan, status: 'COMPLETED' }),
+        update: jest.fn(),
+      },
     });
-    mockTransaction.mockImplementation(async (fn) => fn(tx));
+    mockTransaction.mockImplementation((fn) => fn(db));
 
     await expect(registerAdminPayment(adminInput)).rejects.toMatchObject({ statusCode: 409 });
   });
 
-  it('distribuye el pago a mora primero cuando hay mora pendiente', async () => {
-    const tx = makeTx();
-    tx.loan.findUnique.mockResolvedValue({
-      ...baseLoan,
-      moraAmount: '10000.00',
-      paymentSchedule: [
-        { id: SCHEDULE_ID, amountDue: '25000.00', amountPaid: '0.00', installmentNumber: 1 },
-      ],
-      collector: { firstName: 'C', lastName: 'L' },
-    });
-    mockTransaction.mockImplementation(async (fn) => fn(tx));
-
-    await registerAdminPayment({ ...adminInput, amountPaid: '35000' });
-
-    const createCall = tx.payment.create.mock.calls[0][0];
-    // moraPayment should be 10000 (full mora), capitalPayment 25000
-    expect(createCall.data.moraAmount).toBe('10000.00');
-    expect(createCall.data.amount).toBe('25000.00');
-  });
-
-  it('acepta paymentDate en formato ISO string', async () => {
-    const tx = makeTx();
-    mockTransaction.mockImplementation(async (fn) => fn(tx));
-
-    await registerAdminPayment({ ...adminInput, paymentDate: '2026-05-01T10:00:00Z' });
-
-    expect(tx.payment.create).toHaveBeenCalledTimes(1);
-  });
-
-  it('acepta paymentDate vacío y usa la fecha actual', async () => {
-    const tx = makeTx();
-    mockTransaction.mockImplementation(async (fn) => fn(tx));
-
-    await registerAdminPayment({ ...adminInput, paymentDate: null });
-
-    expect(tx.payment.create).toHaveBeenCalledTimes(1);
-  });
-
-  it('marca préstamo como COMPLETED cuando saldo queda en cero', async () => {
-    const tx = makeTx();
-    tx.loan.findUnique.mockResolvedValue({
-      ...baseLoan,
-      outstandingBalance: '25000.00',
-      totalPaid: '475000.00',
-      moraAmount: '0.00',
-      paymentSchedule: [
-        { id: SCHEDULE_ID, amountDue: '25000.00', amountPaid: '0.00', installmentNumber: 1 },
-      ],
-      collector: { firstName: 'C', lastName: 'L' },
-    });
-    mockTransaction.mockImplementation(async (fn) => fn(tx));
+  it('convierte paymentDate YYYY-MM-DD a fecha correcta', async () => {
+    const db = makeDb();
+    db.loan.update.mockResolvedValue(baseLoan);
+    mockTransaction.mockImplementation((fn) => fn(db));
 
     await registerAdminPayment(adminInput);
 
-    const loanUpdate = tx.loan.update.mock.calls[0][0];
-    expect(loanUpdate.data.status).toBe('COMPLETED');
+    const createCall = db.payment.create.mock.calls[0][0];
+    const collectedAt = new Date(createCall.data.collectedAt);
+    expect(collectedAt.getFullYear()).toBe(2026);
+    expect(collectedAt.getMonth()).toBe(4); // mayo = índice 4
+  });
+
+  it('acepta paymentDate en formato ISO string', async () => {
+    const db = makeDb();
+    db.loan.update.mockResolvedValue(baseLoan);
+    mockTransaction.mockImplementation((fn) => fn(db));
+
+    await registerAdminPayment({ ...adminInput, paymentDate: '2026-05-01T10:00:00Z' });
+
+    expect(db.payment.create).toHaveBeenCalledTimes(1);
+  });
+
+  it('usa fecha actual cuando paymentDate es null', async () => {
+    const db = makeDb();
+    db.loan.update.mockResolvedValue(baseLoan);
+    mockTransaction.mockImplementation((fn) => fn(db));
+
+    await registerAdminPayment({ ...adminInput, paymentDate: null });
+
+    expect(db.payment.create).toHaveBeenCalledTimes(1);
+  });
+
+  it('pasa paymentMethod al payment.create', async () => {
+    const db = makeDb();
+    db.loan.update.mockResolvedValue(baseLoan);
+    mockTransaction.mockImplementation((fn) => fn(db));
+
+    await registerAdminPayment({ ...adminInput, paymentMethod: 'TRANSFER' });
+
+    const createCall = db.payment.create.mock.calls[0][0];
+    expect(createCall.data.paymentMethod).toBe('TRANSFER');
   });
 });

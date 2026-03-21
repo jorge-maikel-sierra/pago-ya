@@ -91,6 +91,7 @@ jest.unstable_mockModule('../../src/controllers/admin.controller.js', () => ({
   createOrganization: mockCreateOrganization,
   getEditOrganization: jest.fn((req, res) => res.status(200).end()),
   updateOrganization: jest.fn((req, res) => res.status(200).end()),
+  getLoanNextInstallment: jest.fn((req, res) => res.status(200).end()),
   logout: mockLogout,
   redirectToDashboard: jest.fn((req, res) => res.redirect('/admin/dashboard')),
 }));
