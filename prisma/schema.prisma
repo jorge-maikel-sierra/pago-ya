@@ -185,6 +185,7 @@ model Loan {
   totalAmount       Decimal           @map("total_amount") @db.Decimal(14, 2)
   installmentAmount Decimal           @map("installment_amount") @db.Decimal(14, 2)
   totalPaid         Decimal           @default(0) @map("total_paid") @db.Decimal(14, 2)
+  interestPaid      Decimal           @default(0) @map("interest_paid") @db.Decimal(14, 2)
   outstandingBalance Decimal          @map("outstanding_balance") @db.Decimal(14, 2)
   moraAmount        Decimal           @default(0) @map("mora_amount") @db.Decimal(14, 2)
 
@@ -227,6 +228,7 @@ model PaymentSchedule {
   moraCharged     Decimal  @default(0) @map("mora_charged") @db.Decimal(14, 2)
 
   isPaid          Boolean  @default(false) @map("is_paid")
+  isRestructured  Boolean  @default(false) @map("is_restructured")
   paidAt          DateTime? @map("paid_at")
   createdAt       DateTime @default(now()) @map("created_at")
   updatedAt       DateTime @updatedAt @map("updated_at")
@@ -250,8 +252,13 @@ model Payment {
 
   // --- Campos monetarios ---
   amount            Decimal  @map("amount") @db.Decimal(14, 2)
+  principalApplied  Decimal  @default(0) @map("principal_applied") @db.Decimal(14, 2)
+  interestApplied   Decimal  @default(0) @map("interest_applied") @db.Decimal(14, 2)
   moraAmount        Decimal  @default(0) @map("mora_amount") @db.Decimal(14, 2)
   totalReceived     Decimal  @map("total_received") @db.Decimal(14, 2)
+
+  // Clasificación del pago según el engine (payment-split.js)
+  paymentType       String?  @default("FULL") @map("payment_type") @db.VarChar(20)
 
   paymentMethod     String   @default("CASH") @map("payment_method") @db.VarChar(20)
   latitude          Decimal? @db.Decimal(10, 7)
